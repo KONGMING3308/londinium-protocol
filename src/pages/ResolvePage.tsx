@@ -1,5 +1,12 @@
-import { useEffect } from 'react'
+/**
+ * 回合结算页。
+ * 阵营牌部分改为「逐人交接 → 选择 → 遮挡」：
+ * 只有 factionPickerId 指的玩家能看到自己的候选牌，其余人只看到排队进度。
+ * 选定后面板不显示牌名（保密），效果在下一回合开始前由日志揭晓。
+ */
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Eye, EyeOff, Lock } from 'lucide-react'
 import { FACTION_MAP } from '@/mocks/factions'
 import { getModifier } from '@/utils/game/modifiers'
 import { useGameStore } from '@/store/gameStore'
@@ -14,19 +21,28 @@ export function ResolvePage() {
   const takeFactionCard = useGameStore((s) => s.takeFactionCard)
   const navigate = useNavigate()
 
+  const pickerId = game?.factionPickerId ?? null
+  const [revealed, setRevealed] = useState(false)
+
+  // 换人时自动重新遮挡，避免上一位的候选牌残留在屏幕上
+  useEffect(() => {
+    setRevealed(false)
+  }, [pickerId])
+
   useEffect(() => {
     if (!game) navigate('/')
   }, [game, navigate])
 
   if (!game) return null
+
   const mod = getModifier(game.round)
   const winner = game.winner ? FACTION_MAP[game.winner] : null
   const final = Boolean(game.winner) || game.round >= 7
-  const hasFactionOffers = game.players.some(
-    (p) =>
-      p.allyId !== null &&
-      ((game.factionOffers?.[p.id] ?? []).length > 0 || Boolean(game.factionPending?.[p.id])),
-  )
+
+  const queue = game.factionPickQueue ?? []
+  const picker = pickerId ? game.players.find((p) => p.id === pickerId) ?? null : null
+  const offers = picker ? game.factionOffers?.[picker.id] ?? [] : []
+  const pickedIds = Object.keys(game.factionPending ?? {})
 
   return (
     <section className="space-y-4">
@@ -54,41 +70,82 @@ export function ResolvePage() {
         ))}
       </div>
 
-      {hasFactionOffers && (
+      {/* 阵营牌：逐个交接选择 */}
+      {(queue.length > 0 || pickedIds.length > 0) && (
         <div className="rounded-xl border border-fuchsia-400/30 bg-fuchsia-500/5 p-4">
-          <p className="mb-3 text-xs text-fuchsia-200">阵营牌（仅同盟可用 · 下一回合开始前生效）</p>
-          <div className="space-y-3">
-            {game.players.map((p) => {
-              if (p.allyId === null) return null
-              const offers = game.factionOffers?.[p.id] ?? []
-              const picked = game.factionPending?.[p.id]
-              if (offers.length === 0 && !picked) return null
-              return (
-                <div key={p.id} className="rounded-lg border border-white/10 bg-slate-900/50 p-3">
-                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-[11px] text-slate-200">
-                      {p.name}（{FACTION_MAP[p.factionId].name}）
-                    </p>
-                    {picked ? (
-                      <p className="text-[10px] text-fuchsia-200">已选定：{picked.name}</p>
-                    ) : (
-                      <Button variant="ghost" onClick={() => takeFactionCard(p.id, null)}>
-                        放弃
-                      </Button>
-                    )}
-                  </div>
-                  {!picked && (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {offers.map((card) => (
-                        <CardTile key={card.id} card={card} compact onClick={() => takeFactionCard(p.id, card.id)} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-xs text-fuchsia-200">
+              <Lock className="h-3.5 w-3.5" />
+              阵营牌 · 仅同盟可用（下一回合开始前生效）
+            </p>
+            {queue.length > 0 && (
+              <p className="text-[10px] text-slate-500">还剩 {queue.length} 人未选</p>
+            )}
           </div>
-          <p className="mt-2 text-[10px] text-slate-500">阵营牌选择不阻塞进入下一回合。</p>
+
+          {/* 未轮到任何人：已选完 */}
+          {!picker && (
+            <p className="text-[11px] text-slate-400">
+              本回合阵营牌已全部处理完毕。
+              {pickedIds.length > 0 && ` ${pickedIds.length} 人已选定（保密，下回合生效时公布）。`}
+            </p>
+          )}
+
+          {/* 轮到了，但还没确认身份：只显示交接提示 */}
+          {picker && !revealed && (
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-white/10 bg-slate-950/50 p-6 text-center">
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">请将设备交给</p>
+              <h4 className="font-display text-2xl text-amber-200">{picker.name}</h4>
+              <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <EyeOff className="h-3.5 w-3.5" />
+                接下来会显示 {picker.name} 的 2 张候选牌，其他玩家请勿查看
+              </p>
+              <Button onClick={() => setRevealed(true)}>
+                我是 {picker.name}，查看我的候选牌
+              </Button>
+            </div>
+          )}
+
+          {/* 已确认身份：显示本候选牌 */}
+          {picker && revealed && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-[11px] text-slate-200">
+                  <Eye className="h-3.5 w-3.5 text-fuchsia-300" />
+                  {picker.name}（{FACTION_MAP[picker.factionId].name}）的候选牌
+                </p>
+                <Button variant="ghost" onClick={() => takeFactionCard(picker.id, null)}>
+                  全部放弃
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {offers.map((card) => (
+                  <CardTile
+                    key={card.id}
+                    card={card}
+                    compact
+                    onClick={() => takeFactionCard(picker.id, card.id)}
+                  />
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500">
+                选 1 张带入下一回合；选定后本条记录不会显示牌名，效果在下一回合开始前公布。
+              </p>
+            </div>
+          )}
+
+          {/* 已选定名单（不含牌面） */}
+          {pickedIds.length > 0 && (
+            <div className="mt-3 border-t border-white/10 pt-2">
+              <p className="text-[10px] text-slate-500">
+                已选定：
+                {pickedIds
+                  .map((id) => game.players.find((p) => p.id === id)?.name ?? id)
+                  .join('、')}
+                <span className="ml-1 text-slate-600">（牌面保密）</span>
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -104,7 +161,11 @@ export function ResolvePage() {
           navigate(final ? '/result' : '/round')
         }}
       >
-        {final ? '查看最终结算' : `进入第 ${game.round + 1} 回合`}
+        {final
+          ? '查看最终结算'
+          : queue.length > 0
+            ? `跳过剩余阵营牌，进入第 ${game.round + 1} 回合`
+            : `进入第 ${game.round + 1} 回合`}
       </Button>
     </section>
   )

@@ -86,7 +86,7 @@ const FAQ: Array<{ q: string; a: string }> = [
   },
   {
     q: 'Q4 数值不够是不是就打不出某张牌？',
-    a: '按当前实现：不检查，能打。代价照扣，可能把某项扣成负数，若本回合其他收益补不回来，结算末尾就会崩溃。所以出牌前自己算一下——这也是新手最容易踩的坑。',
+    a: '单张牌付不起时，那张牌会被划掉并标注缺口，点都点不了。但「多张牌的合计代价」超过当前数值时，界面只给红色警告、仍然允许提交——因为结算扣费不设下限，这种情况下你会被扣成负数、当场崩溃。看到红色警告就别硬打。',
   },
   {
     q: 'Q5 结盟到底有什么好处？值得背叛吗？',
@@ -211,6 +211,10 @@ export function RulesPage() {
             <p className="text-slate-300">行动牌（每回合 3 张，3 选 2）</p>
             <p>来自本阵营行动池，三张的战略轴互不相同：<span className="text-slate-300">强攻</span>（用人力和补给换战果）、<span className="text-slate-300">补给线</span>（补物资，部分需要同盟）、<span className="text-slate-300">宣传</span>（堆士气）、<span className="text-slate-300">转化</span>（资源互换，结构会失衡）、<span className="text-slate-300">情报</span>（看牌干扰）、<span className="text-slate-300">冒险</span>（按概率结算，成功大赚、失败反噬）。</p>
             <p className="mt-1 text-slate-500">部分牌带成功率：掷出的结果在本回合内统一生效，不看先后手。</p>
+            <p className="mt-1 text-slate-500">
+              代价在结算时统一扣除。<span className="text-slate-300">付不起的牌会被标红禁用</span>，选不了；
+              若所选组合的合计代价超过当前数值，界面只警告不阻止，后果由你承担。
+            </p>
           </div>
           <div>
             <p className="text-slate-300">中立援助（每回合 1 张，不占 3 选 2 名额）</p>

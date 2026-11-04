@@ -207,6 +207,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       })
     }
 
+    // 阵营牌逐个交接：按座次排队，避免同桌围观彼此的候选牌
+    const factionPickQueue = Object.keys(factionOffers)
+
     const next: GameState = {
       ...game,
       players: result.players,
@@ -215,6 +218,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       factionCardDeck,
       factionCardDiscard,
       factionOffers,
+      factionPickQueue,
+      factionPickerId: factionPickQueue[0] ?? null,
       phase: 'resolved',
       roundLog: [...game.roundLog, ...result.logs],
       winner: victory?.factionId ?? null,
@@ -227,6 +232,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   takeFactionCard: (playerId, cardId) => {
     const { game } = get()
     if (!game) return
+    // 断言：只有当前轮到的玩家可以操作自己的阵营牌，防止替他人选择
+    if (!game.factionPickerId || game.factionPickerId !== playerId) return
     const offers = game.factionOffers[playerId]
     if (!offers) return
     const factionOffers = { ...game.factionOffers }
@@ -241,7 +248,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       factionCardDiscard.push(...offers)
     }
     delete factionOffers[playerId]
-    const next: GameState = { ...game, factionOffers, factionPending, factionCardDiscard }
+    // 出队并推进到下一位；队列空则表示本轮选牌结束
+    const factionPickQueue = game.factionPickQueue.filter((id) => id !== playerId)
+    const next: GameState = {
+      ...game,
+      factionOffers,
+      factionPending,
+      factionCardDiscard,
+      factionPickQueue,
+      factionPickerId: factionPickQueue[0] ?? null,
+    }
     saveGame(next)
     set({ game: next })
   },
@@ -257,6 +273,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         phase: 'result',
         factionCardDiscard: [...game.factionCardDiscard, ...leftover],
         factionOffers: {},
+        factionPickQueue: [],
+        factionPickerId: null,
       }
       saveGame(ended)
       set({ game: ended })
@@ -270,6 +288,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       picks: {},
       factionCardDiscard: [...game.factionCardDiscard, ...leftover],
       factionOffers: {},
+      factionPickQueue: [],
+      factionPickerId: null,
     }
     set({ game: next })
     get().beginRound()
@@ -285,6 +305,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       factionCardDiscard: loaded.factionCardDiscard ?? [],
       factionOffers: loaded.factionOffers ?? {},
       factionPending: loaded.factionPending ?? {},
+      factionPickQueue: loaded.factionPickQueue ?? Object.keys(loaded.factionOffers ?? {}),
+      factionPickerId:
+        loaded.factionPickerId ?? Object.keys(loaded.factionOffers ?? {})[0] ?? null,
     }
     set({ game, hasBanner: Boolean(game.winner) })
     // 旧存档可能停在 picking 但手牌结构不符，重新发一手保证可提交

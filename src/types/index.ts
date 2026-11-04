@@ -180,6 +180,10 @@ export interface GameState {
   factionOffers: Record<string, CardDef[]>
   /** 已选定、下一回合开始前生效的阵营牌（键为玩家 id） */
   factionPending: Record<string, CardDef>
+  /** 阵营牌选择队列：本轮需要选牌的玩家 id，按座次顺序逐个交接 */
+  factionPickQueue: string[]
+  /** 当前轮到谁选阵营牌；null 表示本轮已选完或无人可选 */
+  factionPickerId: string | null
   hand: CardDef[]
   picks: Record<string, Pick>
   pactEvent: PactEventDef | null

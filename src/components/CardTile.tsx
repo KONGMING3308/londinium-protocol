@@ -7,9 +7,11 @@ interface Props {
   disabled?: boolean
   onClick?: () => void
   compact?: boolean
+  /** 额外提示（如「代价不足」），显示为红色警示行 */
+  warning?: string
 }
 
-export function CardTile({ card, selected, disabled, onClick, compact }: Props) {
+export function CardTile({ card, selected, disabled, onClick, compact, warning }: Props) {
   const designated = card.category === 'designated'
   const faction = card.category === 'faction'
   return (
@@ -77,6 +79,12 @@ export function CardTile({ card, selected, disabled, onClick, compact }: Props) 
         <p className="mt-1 text-[10px] text-rose-300">落空 ← 反噬 {effectText(card.backlash)}</p>
       )}
       {card.progress ? <p className="mt-1 text-[10px] text-rose-300">战争进度 +{card.progress}</p> : null}
+
+      {warning && (
+        <p className="mt-1.5 rounded border border-rose-400/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-medium text-rose-200">
+          ⚠ {warning}
+        </p>
+      )}
     </button>
   )
 }

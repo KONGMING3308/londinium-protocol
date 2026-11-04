@@ -26,6 +26,8 @@ export function createGame(names: string[]): GameState {
     factionCardDiscard: [],
     factionOffers: {},
     factionPending: {},
+    factionPickQueue: [],
+    factionPickerId: null,
     hand: [],
     picks: {},
     pactEvent: null,
