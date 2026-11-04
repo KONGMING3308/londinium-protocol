@@ -18,5 +18,6 @@ export function makePlayer(name: string, factionId: FactionId, index: number): P
     betrayed: false,
     betrayedThisRound: false,
     nullifiedTags: [],
+    keyTags: [],
   }
 }

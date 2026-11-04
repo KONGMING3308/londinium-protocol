@@ -127,8 +127,10 @@ export interface PlayerState {
   betrayed: boolean
   /** 本回合是否撕毁过盟约（用于盟约事件结算） */
   betrayedThisRound: boolean
-  /** 被成功针对过的 KEY 标签 */
+  /** 已被成功针对（击穿）的 KEY 标签：一旦记录，相关胜利条件永久失效 */
   nullifiedTags: string[]
+  /** 已真正到手的 KEY 标签：本回合打出且未被击穿才获得，是相关胜利条件的前提 */
+  keyTags: string[]
 }
 
 export interface Pick {

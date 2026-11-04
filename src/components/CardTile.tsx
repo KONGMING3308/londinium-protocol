@@ -79,6 +79,11 @@ export function CardTile({ card, selected, disabled, onClick, compact, warning }
         <p className="mt-1 text-[10px] text-rose-300">落空 ← 反噬 {effectText(card.backlash)}</p>
       )}
       {card.progress ? <p className="mt-1 text-[10px] text-rose-300">战争进度 +{card.progress}</p> : null}
+      {card.tag && (
+        <p className="mt-1 text-[10px] leading-relaxed text-amber-200/80">
+          KEY【{card.tag}】· 打出当回合可能被「针对{card.tag}」击穿
+        </p>
+      )}
 
       {warning && (
         <p className="mt-1.5 rounded border border-rose-400/30 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-medium text-rose-200">

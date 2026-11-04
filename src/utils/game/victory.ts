@@ -34,6 +34,7 @@ function checkSark(p: PlayerState): VictoryResult | null {
 
 function checkVic(p: PlayerState, players: PlayerState[]): VictoryResult | null {
   if (
+    p.keyTags.includes('国剑') &&
     !p.nullifiedTags.includes('国剑') &&
     allAtLeast(p, 12) &&
     someoneFallen(players, p.id)
@@ -45,9 +46,14 @@ function checkVic(p: PlayerState, players: PlayerState[]): VictoryResult | null 
 
 function checkTara(p: PlayerState, players: PlayerState[]): VictoryResult | null {
   const vic = players.find((o) => o.factionId === 'VIC' && !o.defeated)
+  if (!p.keyTags.includes('塔拉独立')) return null
   if (p.nullifiedTags.includes('塔拉独立')) return null
   if (vic) {
-    const vicWins = !vic.nullifiedTags.includes('国剑') && allAtLeast(vic, 12) && someoneFallen(players, vic.id)
+    const vicWins =
+      vic.keyTags.includes('国剑') &&
+      !vic.nullifiedTags.includes('国剑') &&
+      allAtLeast(vic, 12) &&
+      someoneFallen(players, vic.id)
     if (vicWins) return null
     if (p.stats.morale >= 12) {
       return { factionId: 'TARA', reason: '塔拉独立未被压制，红龙加冕为塔拉的王。' }
@@ -63,7 +69,12 @@ function checkTara(p: PlayerState, players: PlayerState[]): VictoryResult | null
 }
 
 function checkReu(p: PlayerState, players: PlayerState[]): VictoryResult | null {
-  if (!p.nullifiedTags.includes('新纲领') && allAtLeast(p, 10) && someoneFallen(players, p.id)) {
+  if (
+    p.keyTags.includes('新纲领') &&
+    !p.nullifiedTags.includes('新纲领') &&
+    allAtLeast(p, 10) &&
+    someoneFallen(players, p.id)
+  ) {
     return { factionId: 'REU', reason: '新纲领成立，废墟上的统一战线开始运转。' }
   }
   return null

@@ -1,6 +1,16 @@
 import { FACTION_MAP } from '@/mocks/factions'
-import type { PlayerState } from '@/types'
+import type { FactionId, PlayerState } from '@/types'
 import { StatBar } from './StatBar'
+
+/**
+ * 每个阵营的「关键道具」= 相关胜利条件的硬前提。
+ * 只在需要打出 KEY 牌才能获胜的三个阵营显示；萨卡兹靠战争进度、罗德岛与市民自救军不依赖 KEY。
+ */
+const KEY_OF: Partial<Record<FactionId, string>> = {
+  VIC: '国剑',
+  TARA: '塔拉独立',
+  REU: '新纲领',
+}
 
 interface Props {
   player: PlayerState
@@ -15,6 +25,10 @@ export function FactionPanel({ player, highlight, compact }: Props) {
     player.defeated ? '出局' : null,
     player.allyId ? '结盟中' : null,
   ].filter(Boolean)
+
+  const keyName = KEY_OF[player.factionId]
+  const hasKey = keyName ? player.keyTags?.includes(keyName) : false
+  const keyLost = keyName ? player.nullifiedTags.includes(keyName) : false
 
   return (
     <div
@@ -40,6 +54,19 @@ export function FactionPanel({ player, highlight, compact }: Props) {
       </div>
       {player.factionId === 'SARK' && (
         <p className="mt-2 text-[10px] text-rose-200/80">战争进度 {player.warProgress} / 3</p>
+      )}
+      {keyName && (
+        <p
+          className={`mt-2 text-[10px] ${
+            keyLost ? 'text-rose-300' : hasKey ? 'text-emerald-200' : 'text-white/45'
+          }`}
+        >
+          {keyLost
+            ? `【${keyName}】已被击穿 · 无法获胜`
+            : hasKey
+              ? `已握有【${keyName}】`
+              : `尚未获得【${keyName}】`}
+        </p>
       )}
     </div>
   )

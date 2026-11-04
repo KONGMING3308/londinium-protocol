@@ -32,7 +32,7 @@ export const FACTIONS: FactionDef[] = [
     base: { manpower: 9, supply: 8, morale: 8 },
     victory: {
       title: '国剑 + 三线≥12',
-      description: '国剑未被针对，终局人力、补给、士气均 ≥12，且至少一名其他阵营曾崩溃（流亡或出局）。',
+      description: '握有国剑且未被击穿（须打出「夺回国剑」），终局人力、补给、士气均 ≥12，且至少一名其他阵营曾崩溃（流亡或出局）。',
       key: 'VIC_UNITY',
     },
     summary: '阿斯兰王嗣维娜重返首都，以国剑收拢诸公爵，代价是必须有人倒下。',
@@ -64,7 +64,7 @@ export const FACTIONS: FactionDef[] = [
     base: { manpower: 8, supply: 7, morale: 8 },
     victory: {
       title: '塔拉独立未被针对',
-      description: '塔拉独立未被针对，且典范军未达成胜利时终局士气 ≥12；若本局无典范军，则改为终局士气 ≥15 且全场最高。',
+      description: '握有塔拉独立且未被击穿（须打出「塔拉独立」），且典范军未获胜时终局士气 ≥12；若本局无典范军，改为终局士气 ≥15 且全场最高。',
       key: 'TARA_INDEPENDENCE',
     },
     summary: '以恐怖与煽动起家的民族主义武装，爱布拉娜要让塔拉从典范军手中撕裂出去。',
@@ -80,7 +80,7 @@ export const FACTIONS: FactionDef[] = [
     base: { manpower: 5, supply: 4, morale: 7 },
     victory: {
       title: '新纲领成立 + 三线≥10',
-      description: '【新纲领】未被针对，终局人力、补给、士气均 ≥10，且至少一名其他阵营曾崩溃（流亡或出局）。',
+      description: '握有新纲领且未被击穿（须打出「新纲领」），终局人力、补给、士气均 ≥10，且至少一名其他阵营曾崩溃（流亡或出局）。',
       key: 'REU_PACT',
     },
     summary: '从感染者反抗军转向跨种族统一战线，革命只在废墟上成立。',

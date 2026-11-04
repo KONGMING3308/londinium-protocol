@@ -301,6 +301,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // 旧存档补齐阵营牌字段
     const game: GameState = {
       ...loaded,
+      players: loaded.players.map((p) => ({ ...p, keyTags: p.keyTags ?? [] })),
       factionCardDeck: loaded.factionCardDeck ?? [],
       factionCardDiscard: loaded.factionCardDiscard ?? [],
       factionOffers: loaded.factionOffers ?? {},

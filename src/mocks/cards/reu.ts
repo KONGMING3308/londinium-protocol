@@ -51,12 +51,12 @@ export const REU_DESIGNATED = [
   designatedCard(R, 'E-D5', '城市巷战', 5, 'siege', '把战线拖进街区，让对手的补给在巷口耗尽。', {
     backlash: { supply: -4 },
   }),
-  designatedCard(R, 'E-D6', '联合行动', 6, 'decisive', '整合运动与盟友同时压上，与对手正面比一次动员力。', {
-    backlash: { morale: -3 },
-  }),
-  designatedCard(R, 'E-D7', '新纲领', 7, 'incite', '跨界线的统一战线成立，从对手的阵营中拉走追随者。', {
+  designatedCard(R, 'E-D6', '新纲领', 6, 'incite', '跨界线的统一战线成立，从对手的阵营中拉走追随者。', {
     targetRule: 'any',
     tag: '新纲领',
     backlash: { morale: -2 },
+  }),
+  designatedCard(R, 'E-D7', '联合行动', 7, 'decisive', '整合运动与盟友同时压上，与对手正面比一次动员力。', {
+    backlash: { morale: -3 },
   }),
 ]

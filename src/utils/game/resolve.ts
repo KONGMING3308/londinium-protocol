@@ -311,6 +311,19 @@ export function resolveRound(
         if (td) nullified.add(td.id)
       }
     })
+  // 3.5 KEY 获得：本回合打出、且没有被击穿的 KEY 牌，才算真正「拿到手」。
+  // 「国剑 / 塔拉独立 / 新纲领」这类胜利条件以此为前提——不打牌就没有 KEY，
+  // 也就无法获胜；一旦打出又被针对，则永久失效。这样 KEY 牌才有取舍意义。
+  next.forEach((p) => {
+    const pick = picks[p.id]
+    if (!pick) return
+    playedCards(pick).forEach((card) => {
+      if (!card.tag) return
+      if (nullified.has(card.id)) return
+      if (!p.keyTags.includes(card.tag)) p.keyTags.push(card.tag)
+    })
+  })
+
   // 4. 指定牌命中 / 落空反噬
   attempts.forEach((a) => {
     const attacker = a.attacker

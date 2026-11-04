@@ -70,6 +70,47 @@ const RESOLVE_ORDER: Array<{ step: string; what: string; detail: string }> = [
   },
 ]
 
+/** 依赖 KEY 才能获胜的三个阵营（与代码 victory.ts 对齐） */
+const KEY_ROWS = [
+  {
+    faction: '典范军 VIC',
+    key: '国剑',
+    keyCard: '夺回国剑',
+    keyRound: 'R3',
+    counter: '焚烧王旗',
+    counterBy: '塔拉',
+    counterRound: 'R3',
+    win: '三线 ≥12 + 至少一人崩溃过',
+  },
+  {
+    faction: '塔拉 TARA',
+    key: '塔拉独立',
+    keyCard: '塔拉独立',
+    keyRound: 'R6',
+    counter: '讨伐塔拉',
+    counterBy: '典范军',
+    counterRound: 'R6',
+    win: '士气 ≥12，且典范军未获胜',
+  },
+  {
+    faction: '整合运动 REU',
+    key: '新纲领',
+    keyCard: '新纲领',
+    keyRound: 'R6',
+    counter: '深池渗透',
+    counterBy: '塔拉',
+    counterRound: 'R7',
+    win: '三线 ≥10 + 至少一人崩溃过',
+  },
+]
+
+/** 萨卡兹的三个 KEY：不用于判定胜负，而是战争进度的来源、也是罗德岛的靶子 */
+const SARK_KEYS = [
+  { key: '飞空艇', card: '飞空艇升空', round: 'R4', progress: '+1', counter: '打击飞空艇（罗德岛 R4）' },
+  { key: '生命脊椎', card: '生命脊椎', round: 'R5', progress: '+1', counter: '打击生命脊椎（罗德岛 R5）' },
+  { key: '阿喃那', card: '接引阿喃那', round: 'R7', progress: '+2', counter: '阻止阿喃那（罗德岛 R7）' },
+]
+
 /** 常见疑问 */
 const FAQ: Array<{ q: string; a: string }> = [
   {
@@ -93,12 +134,12 @@ const FAQ: Array<{ q: string; a: string }> = [
     a: '好处有两个：每回合互援 +1 士气，以及获得「阵营牌」抽取资格（2 选 1，效果不错）。背叛的代价很重——撕约者永久失去结盟资格，只有打出「背叛的诱惑」这类盟约事件时才划算。',
   },
   {
-    q: 'Q6 什么是「KEY 标签」？为什么我的牌会被整张废掉？',
-    a: '部分指定牌带 KEY 标签（飞空艇、生命脊椎、阿喃那、国剑、塔拉独立、新纲领），它们是某些阵营胜利条件的核心。别人打出「针对 XX」的牌并命中你时，你那张带该标签的牌整张失效，而且会被永久记录为「已被针对」——有些胜利条件就此作废。',
+    q: 'Q6 什么是 KEY 标签？为什么我不能不打那张牌？',
+    a: 'KEY 是你阵营获胜的前提，只有「打出过且没被击穿」才算拿到手（面板会显示「已握有」）。不打 = 永远没有 KEY = 胜利条件永不成立。所以带 KEY 的牌不是可选项，你必须找机会把它打出去。风险在于：打出当回合若被对手的「针对 XX」命中，它会整张失效，KEY 永久作废，你这一局再也赢不了。',
   },
   {
     q: 'Q7 战争进度是什么？只有萨卡兹有吗？',
-    a: '是萨卡兹专属的第四条进度。它的指定牌命中且标注了推进值时才会增加（其它情况一律不推进），累计到 3 并且终局士气 ≥8 就获胜。其他人不用管它，但可以专门打掉萨卡兹带「阿喃那」标签的牌来阻止。',
+    a: '是萨卡兹专属的第四条进度（面板常显 x/3）。带推进值的牌结算成功就会涨：飞空艇升空 +1、生命脊椎 +1、接引阿喃那 +2、阵营牌「战线的推进」+1。累计 ≥3 且士气 ≥8 就获胜。其他阵营不用管这条进度，但可以在对应牌打出的同一回合用罗德岛的针对性牌把它打掉。',
   },
   {
     q: 'Q8 中途关掉页面会丢进度吗？',
@@ -136,7 +177,7 @@ export function RulesPage() {
             ['#cards', '四、四种牌'],
             ['#order', '五、结算顺序'],
             ['#alliance', '六、同盟与背叛'],
-            ['#key', '七、针对与 KEY 标签'],
+            ['#key', '七、KEY 与战争进度'],
             ['#factions', '八、六阵营胜利条件'],
             ['#story', '九、七回合剧情'],
             ['#faq', '十、常见疑问'],
@@ -288,16 +329,79 @@ export function RulesPage() {
         </ul>
       </div>
 
-      {/* 七、KEY */}
+      {/* 七、KEY 与战争进度 */}
       <div id="key" className="rounded-lg border border-white/10 bg-slate-900/40 p-4">
-        <p className="text-sm text-amber-200">七、针对与 KEY 标签</p>
-        <ul className="mt-2 space-y-1.5 text-[12px] leading-relaxed text-slate-400">
-          <li>· 部分牌带 KEY 标签：<span className="text-slate-300">飞空艇、生命脊椎、阿喃那、国剑、塔拉独立、新纲领</span>。</li>
-          <li>· 对手打出「针对 XX」的牌命中你时，你那张带该标签的牌<span className="text-slate-200">整张失效</span>，并被永久记为「已被针对」——部分阵营的胜利条件会因此直接作废。</li>
-          <li>· 击穿宿敌（互相敌对的阵营）额外 +2 士气，非宿敌 +1。</li>
-          <li>· 针对扑空（目标手上没有该标签的牌）则只回补 +1 补给。</li>
-          <li>· 「破坏」类指定牌可以让目标本回合打出的指定牌失效。</li>
+        <p className="text-sm text-amber-200">七、KEY 标签与战争进度</p>
+        <p className="mt-2 rounded border border-amber-400/30 bg-amber-500/10 p-2 text-[12px] leading-relaxed text-amber-100">
+          带 KEY 的牌是某些阵营<span className="font-medium">获胜的前提</span>，不是可打可不打的普通牌。
+          <span className="text-amber-300/90">不打它，对应的胜利条件永远不成立。</span>
+        </p>
+
+        <p className="mt-3 text-[11px] text-slate-300">三步因果链</p>
+        <div className="mt-1.5 space-y-1">
+          {[
+            ['① 获得', '本回合打出带 KEY 的牌，且没有被击穿 → 该 KEY 归你。面板显示「已握有【国剑】」。'],
+            ['② 失去', '若同一回合对手用「针对国剑」的牌命中你 → 那张牌收益归零，KEY 永久作废，面板变红「已被击穿」。'],
+            ['③ 判定', '终局只认「已握有」+「未被击穿」同时成立。缺一条都赢不了。'],
+          ].map(([step, detail]) => (
+            <div key={step} className="flex gap-2 rounded border border-white/5 bg-slate-950/40 p-2">
+              <span className="shrink-0 text-[11px] font-medium text-amber-300/80">{step}</span>
+              <span className="text-[11px] leading-relaxed text-slate-400">{detail}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-3 text-[11px] text-slate-300">关键：针对只在「同一回合」有效</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+          对手的「针对 XX」只能打中你<span className="text-slate-300">本回合打出的</span>那张牌。
+          所以只要你安全打出过一次，之后谁也夺不走。反过来，你也要盯住对手 KEY 牌的发放回合——
+          错过那一回合，就再没有机会了。
+        </p>
+
+        <p className="mt-4 text-[11px] text-amber-200/80">三个依赖 KEY 的阵营</p>
+        <div className="mt-1.5 space-y-1.5">
+          {KEY_ROWS.map((r) => (
+            <div key={r.key} className="rounded border border-white/10 bg-slate-950/40 p-2.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-slate-200">{r.faction}</span>
+                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-200">KEY：{r.key}</span>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                拿到它：<span className="text-slate-300">「{r.keyCard}」({r.keyRound})</span>
+                　|　会被夺走：<span className="text-rose-300">「{r.counter}」({r.counterBy} {r.counterRound})</span>
+              </p>
+              <p className="mt-0.5 text-[10px] text-slate-500">另外还需：{r.win}</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-4 text-[11px] text-amber-200/80">萨卡兹的三个 KEY 是例外</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+          飞空艇、生命脊椎、阿喃那<span className="text-slate-300">不用于判定萨卡兹的胜负</span>，
+          而是战争进度的来源，同时也是罗德岛的靶子。萨卡兹靠把进度堆到 3 赢，不是靠持有 KEY。
+        </p>
+        <div className="mt-1.5 space-y-1">
+          {SARK_KEYS.map((k) => (
+            <div key={k.key} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded border border-white/5 bg-slate-950/40 px-2 py-1.5 text-[10px]">
+              <span className="text-slate-300">{k.key}</span>
+              <span className="text-slate-500">「{k.card}」{k.round}</span>
+              <span className="text-rose-300">进度 {k.progress}</span>
+              <span className="text-rose-200/70">被 {k.counter}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-4 text-[11px] text-amber-200/80">战争进度（萨卡兹专属，面板常显 x / 3）</p>
+        <ul className="mt-1 space-y-1 text-[11px] leading-relaxed text-slate-400">
+          <li>· 来源：上述三张指定牌，加上阵营牌「战线的推进」（+1）。<span className="text-slate-500">牌结算成功才涨，被击穿则不涨。</span></li>
+          <li>· 判定：<span className="text-slate-200">进度 ≥3 且士气 ≥8</span>，第 6 或第 7 回合结束时获胜。</li>
+          <li>· 已被击穿的进度不会退回，但那张牌本身也拿不到进度。</li>
+          <li>· 其他阵营的应对：罗德岛的三张针对性牌正好与萨卡兹的 KEY 牌同回合发放，可以在当回合把进度打掉。</li>
         </ul>
+
+        <p className="mt-3 text-[10px] leading-relaxed text-slate-600">
+          补充：击穿宿敌阵营 +2 士气、非宿敌 +1；针对扑空只回补 +1 补给；「破坏」类牌能让目标本回合的指定牌失效。
+        </p>
       </div>
 
       {/* 八、胜利条件 */}
