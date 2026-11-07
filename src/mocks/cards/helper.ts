@@ -22,22 +22,39 @@ export function actionCard(
 }
 
 interface FactionExtra {
-  special?: CardDef['special']
   progress?: number
-  requiresAlly?: boolean
+  allyProgress?: number
 }
 
+/**
+ * 阵营「交换」牌：一张牌同时写两边。
+ * pair 有序 —— 甲方吃 effects，乙方吃 allyEffects；谁选中都按阵营结算，
+ * 所以同一张牌由萨卡兹选还是由深池选，结果完全一致。
+ */
 export function factionCard(
   id: string,
   name: string,
+  pair: [FactionId, FactionId],
   effects: Partial<Stats>,
+  allyEffects: Partial<Stats>,
   text: string,
   extra: FactionExtra = {},
 ): CardDef {
-  return { id, owner: 'GENERIC', name, category: 'faction', effects, text, ...extra }
+  return {
+    id,
+    owner: 'GENERIC',
+    name,
+    category: 'faction',
+    effects,
+    allyEffects,
+    pair,
+    text,
+    ...extra,
+  }
 }
 
 interface DesignatedExtra {
+  hitText?: string
   effects?: Partial<Stats>
   backlash?: Partial<Stats>
   targetRule?: 'hostile' | 'any'

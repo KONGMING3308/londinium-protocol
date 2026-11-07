@@ -9,6 +9,8 @@ export function createAlliance(players: PlayerState[], aId: string, bId: string)
   const a = players.find((p) => p.id === aId)
   const b = players.find((p) => p.id === bId)
   if (!a || !b || a.allyId || b.allyId || a.betrayed || b.betrayed) return null
+  // 出局/流亡者不能结盟：引擎层已在入口拒绝，这里是纯函数的最后一道防线
+  if (a.defeated || a.exiled || b.defeated || b.exiled) return null
   if (!canAlly(a.factionId, b.factionId)) return null
   if (players.filter((p) => p.allyId).length / 2 >= MAX_ALLIANCE_PAIRS) return null
   return players.map((p) => {

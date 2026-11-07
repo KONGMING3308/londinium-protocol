@@ -13,13 +13,15 @@ export const SARK_ACTIONS = [
   actionCard(R, 'S-A3', '碎片大厦工程', 'logistics', { supply: 4 }, '摄政王的工程吞掉大量劳力，换来前线急需的物资。', {
     cost: { manpower: 1 },
   }),
-  actionCard(R, 'S-A4', '生命脊椎补给线', 'logistics', { supply: 3, morale: 1 }, '巨兽骸骨成为补给线，只有盟友能共享这条通路。', {
-    requiresAlly: true,
+  actionCard(R, 'S-A4', '生命脊椎补给线', 'logistics', { supply: 3, morale: 1 }, '巨兽骸骨成为补给线，物资沿着骨缝源源不断运进城里。', {
+    cost: { manpower: 1 },
   }),
   actionCard(R, 'S-A5', '血魔的祭品', 'propaganda', { morale: 4 }, '鲜血王庭献上祭品，军心大振，物资在火焰中燃烧。', {
     cost: { supply: 1 },
   }),
-  actionCard(R, 'S-A6', '萨卡兹众魂', 'propaganda', { morale: 2, manpower: 1, supply: -1 }, '死者与生者同行，谁也无法轻易击溃他们。'),
+  actionCard(R, 'S-A6', '萨卡兹众魂', 'propaganda', { manpower: 1, morale: 2 }, '死者与生者同行，谁也无法轻易击溃他们。', {
+    cost: { supply: 1 },
+  }),
   actionCard(R, 'S-A7', '食腐者军团', 'convert', { manpower: 3, supply: 1 }, '孽茨雷的军团开进城区，用威望换来兵源与物资。', {
     cost: { morale: 1 },
   }),
@@ -30,8 +32,8 @@ export const SARK_ACTIONS = [
     cost: { morale: 1 },
     special: 'reveal',
   }),
-  actionCard(R, 'S-A10', '王庭内讧', 'gamble', {}, '王庭争吵不休：压住则凝聚，失控则分裂。', {
-    roll: { chance: 0.5, win: { morale: 5 }, lose: { morale: -3 } },
+  actionCard(R, 'S-A10', '王庭内讧', 'gamble', { morale: 3 }, '王庭争吵不休，摄政王强行压下反对的声音，代价是抽走了前线的兵。', {
+    cost: { manpower: 2 },
   }),
 ]
 
@@ -50,6 +52,7 @@ export const SARK_DESIGNATED = [
     backlash: { supply: -4 },
   }),
   designatedCard(R, 'S-D4', '飞空艇升空', 4, 'siege', '死魂灵的躯体升空，战争正式开始，威慑同时压向对手。', {
+    hitText: '死魂灵压境，对手的补给线被迫收缩：目标补给 -3',
     targetRule: 'any',
     tag: '飞空艇',
     progress: 1,
@@ -57,6 +60,7 @@ export const SARK_DESIGNATED = [
     backlash: { supply: -4 },
   }),
   designatedCard(R, 'S-D5', '生命脊椎', 5, 'siege', '巨兽骸骨成为移动补给线，军队得以持续投送。', {
+    hitText: '补给线前移，把对手的补给压回城里：目标补给 -3',
     targetRule: 'any',
     tag: '生命脊椎',
     progress: 1,

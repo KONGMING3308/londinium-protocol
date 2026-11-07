@@ -40,16 +40,18 @@ export const OP_LABEL: Record<OpKind, string> = {
   incite: '策反',
   expose: '揭穿',
   decisive: '对决',
+  cut: '切断',
 }
 
 export const OP_HIT: Record<OpKind, string> = {
   strike: '目标士气 -4，自身士气 +1',
   raid: '夺取目标 3 补给',
-  siege: '目标补给 -3，自身战绩 +3（标注战争进度的牌额外推进）',
+  siege: '目标补给 -3',
   sabotage: '目标指定牌失效，自身士气 +1',
   incite: '解除目标同盟，自身士气 +1',
   expose: '公开目标行动牌，自身补给 +1',
   decisive: '人力差 ≥3 时夺 5 补给并压制士气',
+  cut: '目标本回合补给收益归零，并顺走 1 点库存（它已付出的代价不会退回）',
 }
 
 export function effectText(effects: PartialStatsLike): string {

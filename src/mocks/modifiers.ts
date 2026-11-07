@@ -1,96 +1,33 @@
-/** 七回合剧情修正：固定剧本层 */
-import type { RoundModifier } from '@/types'
+/**
+ * 回合主题：七回合各自的「大背景」。
+ *
+ * 这里**只有名字，没有数值**。
+ *
+ * v0.3.0 之前这个文件叫「剧情修正」，每回合固定给各阵营加减数值。
+ * 问题是七回合跑完就是一套写死的剧本，打两局所有玩家都能背下来，
+ * 所谓「剧情」退化成了纯数值噪声 —— 玩家看见 R3 就知道萨卡兹士气 +1，
+ * 既不意外也没有决策空间。
+ *
+ * 现在数值部分改成「每回合从 3 个候选事件里随机抽 1 个」（见 src/mocks/story.ts
+ * 与 src/utils/game/story.ts），所以固定数值表已经没有存在意义，删掉。
+ * 但「回合主题名」（潜入 / 撤离 / 夺剑 …）仍然有用：
+ * 它是时间轴上的锚点，让玩家知道这一回合在整场战争里处于哪个阶段。
+ */
+export interface RoundTheme {
+  round: number
+  label: string
+}
 
-export const ROUND_MODIFIERS: RoundModifier[] = [
-  {
-    round: 1,
-    label: '潜入',
-    story: '罗德岛以废品回收企业的身份进入伦蒂尼姆，萨卡兹在每一条街口设卡盘查。',
-    deltas: {
-      SARK: { morale: 1 },
-      VIC: { manpower: -1 },
-      RI: { supply: -1 },
-      TARA: { morale: 1 },
-      REU: { morale: -1 },
-      SSC: { morale: 1 },
-    },
-  },
-  {
-    round: 2,
-    label: '撤离',
-    story: '城防炮被关闭，众人乘列车撤离。市民自救军为掩护撤离付出了代价。',
-    deltas: {
-      SARK: { morale: -1 },
-      VIC: { manpower: 1 },
-      RI: { manpower: 1 },
-      TARA: { supply: 1 },
-      REU: { manpower: 1 },
-      SSC: { supply: -1 },
-    },
-  },
-  {
-    round: 3,
-    label: '夺剑',
-    story: '诸王长眠之所开启，维娜夺取国剑；阿勒黛·坎伯兰留下断后，生死未明。',
-    deltas: {
-      SARK: { morale: 1 },
-      VIC: { morale: -1 },
-      RI: { manpower: -1 },
-      TARA: { manpower: 1 },
-      REU: { supply: -1 },
-      SSC: {},
-    },
-  },
-  {
-    round: 4,
-    label: '战争爆发',
-    story: '飞空艇击毁温德米尔公爵的舰队，诺伯特区被整体抛离主城，市民沦为筹码。',
-    deltas: {
-      SARK: { supply: 2 },
-      VIC: { supply: -2 },
-      RI: { manpower: -1 },
-      TARA: { manpower: 2 },
-      REU: { morale: 1 },
-      SSC: { supply: -2 },
-    },
-  },
-  {
-    round: 5,
-    label: '恶兆',
-    story: '温德米尔公爵遇刺，血魔大君唤醒源石种子，生命脊椎成为各方争夺的补给线。',
-    deltas: {
-      SARK: { morale: 2 },
-      VIC: { manpower: -1 },
-      RI: { morale: -1 },
-      TARA: { supply: 1 },
-      REU: { manpower: 1 },
-      SSC: { morale: -1 },
-    },
-  },
-  {
-    round: 6,
-    label: '银石崖',
-    story: '国剑与剑座合体劈开天灾，公爵联军与典范军反攻，罗德岛强行登舰。',
-    deltas: {
-      SARK: { supply: 1 },
-      VIC: { manpower: 2 },
-      RI: { manpower: 1 },
-      TARA: { morale: -1 },
-      REU: { manpower: 1 },
-      SSC: { morale: 1 },
-    },
-  },
-  {
-    round: 7,
-    label: '终局',
-    story: '阿喃那降临，阿米娅自刺承冠，塔拉宣布独立。所有人的账都要在这一回合结清。',
-    deltas: {
-      SARK: { morale: -2 },
-      VIC: { morale: 2 },
-      RI: { morale: 2 },
-      TARA: { morale: 2 },
-      REU: { morale: 2 },
-      SSC: { morale: 1 },
-    },
-  },
+export const ROUND_THEMES: RoundTheme[] = [
+  { round: 1, label: '潜入' },
+  { round: 2, label: '撤离' },
+  { round: 3, label: '夺剑' },
+  { round: 4, label: '战争爆发' },
+  { round: 5, label: '恶兆' },
+  { round: 6, label: '银石崖' },
+  { round: 7, label: '终局' },
 ]
+
+export function getRoundTheme(round: number): RoundTheme {
+  return ROUND_THEMES.find((t) => t.round === round) ?? ROUND_THEMES[0]
+}

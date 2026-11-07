@@ -4,23 +4,21 @@ import { actionCard, designatedCard } from './helper'
 const R = 'TARA' as const
 
 export const TARA_ACTIONS = [
-  actionCard(R, 'T-A1', '深池募兵', 'assault', { manpower: 4, morale: 1 }, '矿工与农民拿起了枪，队伍变得难以约束。', {
+  actionCard(R, 'T-A1', '深池募兵', 'assault', { manpower: 4 }, '矿工与农民拿起了枪，队伍变得难以约束。', {
     cost: { morale: 1 },
   }),
   actionCard(R, 'T-A2', '深池六人众', 'assault', { manpower: 3, morale: 1 }, '六位头目各自带来一批亡命之徒，也带来一点声望。', {
     cost: { supply: 2 },
   }),
-  actionCard(R, 'T-A3', '威灵顿的默许', 'logistics', { supply: 2, morale: 1 }, '公爵的舰队没有拦截塔拉的补给船，但只对盟友开放。', {
-    requiresAlly: true,
+  actionCard(R, 'T-A3', '威灵顿的默许', 'logistics', { supply: 2, morale: 1 }, '公爵的舰队没有拦截塔拉的补给船，睁一只眼闭一只眼。', {
+    cost: { manpower: 1 },
   }),
-  actionCard(R, 'T-A4', '紫火余烬', 'logistics', { supply: 4 }, '火焰熄灭后的余烬仍能锻铁，只是要先烧掉一些补给。', {
-    cost: { supply: 2 },
-  }),
+  actionCard(R, 'T-A4', '紫火余烬', 'logistics', { supply: 2 }, '火焰熄灭后的余烬仍能锻铁，只是要先烧掉一些补给。', {}),
   actionCard(R, 'T-A5', '民族主义宣传', 'propaganda', { morale: 4 }, '广播里只有一句话：塔拉属于塔拉人。', {
     cost: { supply: 2 },
   }),
-  actionCard(R, 'T-A6', '西尔莎的报道', 'propaganda', { morale: 3, supply: -1 }, '记者的最后一篇报道在街头被反复传抄。', {
-    cost: { manpower: 1 },
+  actionCard(R, 'T-A6', '西尔莎的报道', 'propaganda', { morale: 3 }, '记者的最后一篇报道在街头被反复传抄。', {
+    cost: { manpower: 1, supply: 1 },
   }),
   actionCard(R, 'T-A7', '塔拉语复兴', 'convert', { morale: 2, manpower: 3 }, '被禁止的语言重新出现在墙上，也重新聚起了人。', {
     cost: { supply: 1 },
@@ -29,26 +27,27 @@ export const TARA_ACTIONS = [
     cost: { morale: 1 },
     special: 'stealSupply',
   }),
-  actionCard(R, 'T-A9', '影子领袖', 'intel', { supply: 3, morale: 1 }, '拉芙希妮站在台上，却只是姐姐的影子，影子看得更清楚。', {
+  actionCard(R, 'T-A9', '影子领袖', 'intel', { supply: 3 }, '拉芙希妮站在台上，却只是姐姐的影子，影子看得更清楚。', {
     cost: { morale: 1 },
     special: 'reveal',
   }),
-  actionCard(R, 'T-A10', '红龙的咆哮', 'gamble', {}, '龙啸压过炮声：要么震碎敌胆，要么暴露自己。', {
-    roll: { chance: 0.5, win: { morale: 4, manpower: 1 }, lose: { morale: -3 } },
+  actionCard(R, 'T-A10', '红龙的咆哮', 'gamble', { morale: 3, manpower: 1 }, '龙啸压过炮声，敌胆为之一震；自己的位置也暴露了，只能烧掉一批物资转移。', {
+    cost: { supply: 3 },
   }),
   actionCard(R, 'T-A11', '矿井眼线', 'intel', { supply: 2, manpower: 2 }, '矿工们比情报局更早知道敌人的运输路线。', {
     cost: { morale: 1 },
   }),
-  actionCard(R, 'T-A12', '地下赌档', 'gamble', {}, '矿井里的赌档押的是塔拉人的运气，赢了能吃饱，输了只剩债。', {
-    roll: { chance: 0.55, win: { supply: 3, manpower: 1 }, lose: { supply: -2 } },
+  actionCard(R, 'T-A12', '地下赌档', 'gamble', { supply: 3, manpower: 1 }, '矿井里的赌档押上的是塔拉人的名声：物资到手，人心却赌掉了一块。', {
+    cost: { morale: 2 },
   }),
 ]
 
 export const TARA_DESIGNATED = [
-  designatedCard(R, 'T-D1', '断补给线', 1, 'raid', '切断铁路与仓库，把对手的补给变成塔拉的补给。', {
+  designatedCard(R, 'T-D1', '断补给线', 1, 'cut', '炸掉铁路与仓库：对手这一回合运来的东西全停半路，运了多少都白跑。', {
     backlash: { supply: -3 },
   }),
   designatedCard(R, 'T-D2', '驱逐驻军', 2, 'siege', '围住敌对势力的驻军营地，逼他们在缺粮中撤退。', {
+    hitText: '围住营地断粮断水，驻军弃营撤退：目标补给 -3',
     backlash: { supply: -4 },
   }),
   designatedCard(R, 'T-D3', '焚烧王旗', 3, 'strike', '当街焚烧典范军王旗，王权的象征随之焦黑。', {

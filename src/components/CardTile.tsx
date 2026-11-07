@@ -1,5 +1,6 @@
 import type { CardDef } from '@/types'
-import { AXIS_COLOR, AXIS_LABEL, OP_HIT, OP_LABEL, costText, effectText } from '@/utils/format'
+import { FACTION_MAP } from '@/mocks/factions'
+import { AXIS_COLOR, AXIS_LABEL, OP_HIT, OP_LABEL, STAT_LABEL, costText, effectText } from '@/utils/format'
 
 interface Props {
   card: CardDef
@@ -9,9 +10,11 @@ interface Props {
   compact?: boolean
   /** 额外提示（如「代价不足」），显示为红色警示行 */
   warning?: string
+  /** 自动化测试锚点（浏览器端到端测试用），不影响视觉 */
+  testId?: string
 }
 
-export function CardTile({ card, selected, disabled, onClick, compact, warning }: Props) {
+export function CardTile({ card, selected, disabled, onClick, compact, warning, testId }: Props) {
   const designated = card.category === 'designated'
   const faction = card.category === 'faction'
   return (
@@ -19,6 +22,7 @@ export function CardTile({ card, selected, disabled, onClick, compact, warning }
       type="button"
       onClick={onClick}
       disabled={disabled}
+      data-testid={testId}
       className={`group relative w-full rounded-lg border p-3 text-left transition-all ${
         selected
           ? 'border-amber-400 bg-amber-400/10 shadow-[0_0_0_1px_rgba(251,191,36,0.4)]'
@@ -56,8 +60,50 @@ export function CardTile({ card, selected, disabled, onClick, compact, warning }
       {!compact && <p className="mt-1 text-[11px] leading-relaxed text-slate-400">{card.text}</p>}
 
       {card.cost && <p className="mt-2 text-[10px] text-rose-300">代价：{costText(card.cost)}</p>}
-      {(card.axis || faction) && effectText(card.effects) && (
-        <p className="mt-1 font-mono text-[11px] text-emerald-300">{effectText(card.effects)}</p>
+      {faction ? (
+        <div className="mt-2 space-y-1">
+          {([0, 1] as const).map((i) => {
+            const fid = card.pair?.[i]
+            const eff = (i === 0 ? card.effects : card.allyEffects) ?? {}
+            const rows = (['manpower', 'supply', 'morale'] as const)
+              .map((k) => [k, eff[k] ?? 0] as [keyof typeof STAT_LABEL, number])
+              .filter(([, v]) => v !== 0)
+            const give = rows.filter(([, v]) => v < 0)
+            const gain = rows.filter(([, v]) => v > 0)
+            return (
+              <div
+                key={i}
+                className="rounded border border-white/5 bg-slate-950/40 px-1.5 py-1 text-[10px] leading-relaxed"
+              >
+                <span className={i === 0 ? 'text-emerald-300' : 'text-sky-300'}>
+                  {fid ? FACTION_MAP[fid].name : '—'}
+                </span>
+                <span className="ml-1 text-slate-400">
+                  {give.length > 0 && (
+                    <span className="text-rose-300/90">
+                      付出 {give.map(([k, v]) => `${STAT_LABEL[k]}${v}`).join('、')}
+                    </span>
+                  )}
+                  {give.length > 0 && gain.length > 0 && <span className="text-slate-600"> ｜ </span>}
+                  {gain.length > 0 && (
+                    <span className="text-emerald-300/90">
+                      获得 {gain.map(([k, v]) => `${STAT_LABEL[k]}+${v}`).join('、')}
+                    </span>
+                  )}
+                  {rows.length === 0 && <span className="text-slate-600">无变化</span>}
+                </span>
+              </div>
+            )
+          })}
+          <p className="pt-0.5 text-[10px] text-slate-600">
+            这牌是两人互换：一方给出的，正好是另一方拿到的。
+          </p>
+        </div>
+      ) : (
+        card.axis &&
+        effectText(card.effects) && (
+          <p className="mt-1 font-mono text-[11px] text-emerald-300">{effectText(card.effects)}</p>
+        )
       )}
       {card.requiresAlly && <p className="mt-1 text-[10px] text-amber-300">需要处于同盟，否则无效</p>}
       {card.roll && (
@@ -67,7 +113,9 @@ export function CardTile({ card, selected, disabled, onClick, compact, warning }
       )}
 
       {designated && card.op && (
-        <p className="mt-2 text-[10px] leading-relaxed text-emerald-300">命中 → {OP_HIT[card.op]}</p>
+        <p className="mt-2 text-[10px] leading-relaxed text-emerald-300">
+          {card.hitText ?? `命中 → ${OP_HIT[card.op]}`}
+        </p>
       )}
       {designated && effectText(card.effects) && (
         <p className="mt-1 text-[10px] text-emerald-300">命中额外：{effectText(card.effects)}</p>
@@ -76,9 +124,25 @@ export function CardTile({ card, selected, disabled, onClick, compact, warning }
         <p className="mt-1 text-[10px] text-rose-300">针对【{card.counterTag}】</p>
       )}
       {card.backlash && (
-        <p className="mt-1 text-[10px] text-rose-300">落空 ← 反噬 {effectText(card.backlash)}</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-rose-300">
+          被挡下 / 无合法目标 → 反噬 {effectText(card.backlash)}
+        </p>
       )}
-      {card.progress ? <p className="mt-1 text-[10px] text-rose-300">战争进度 +{card.progress}</p> : null}
+      {card.progress ? (
+        <p className="mt-1 text-[10px] text-rose-300">
+          {faction && card.pair?.[0]
+            ? `${FACTION_MAP[card.pair[0]].name} `
+            : card.owner !== 'GENERIC'
+              ? `${FACTION_MAP[card.owner].name} `
+              : ''}
+          战争进度 +{card.progress}
+        </p>
+      ) : null}
+      {card.allyProgress ? (
+        <p className="mt-1 text-[10px] text-rose-300">
+          {faction && card.pair?.[1] ? `${FACTION_MAP[card.pair[1]].name} ` : ''}战争进度 +{card.allyProgress}
+        </p>
+      ) : null}
       {card.tag && (
         <p className="mt-1 text-[10px] leading-relaxed text-amber-200/80">
           KEY【{card.tag}】· 打出当回合可能被「针对{card.tag}」击穿

@@ -4,25 +4,23 @@ import { actionCard, designatedCard } from './helper'
 const R = 'SSC' as const
 
 export const SSC_ACTIONS = [
-  actionCard(R, 'C-A1', '平民志愿者', 'assault', { manpower: 3, morale: 2 }, '没有受过训练，但他们认识每一条街。', {
-    cost: { morale: 1 },
-  }),
+  actionCard(R, 'C-A1', '平民志愿者', 'assault', { manpower: 3, morale: 1 }, '没有受过训练，但他们认识每一条街。', {}),
   actionCard(R, 'C-A2', '费斯特的自行炮', 'assault', { manpower: 4 }, '用废铁焊出的炮至少能响，响之前要先安抚街区。', {
     cost: { supply: 2 },
   }),
-  actionCard(R, 'C-A3', '凯瑟琳的补给线', 'logistics', { supply: 4, manpower: -1 }, '十一号军工厂的灯一直亮着，代价是工人不眠不休。', {
-    cost: { morale: 1 },
+  actionCard(R, 'C-A3', '凯瑟琳的补给线', 'logistics', { supply: 4 }, '十一号军工厂的灯一直亮着，代价是工人不眠不休。', {
+    cost: { morale: 1, manpower: 1 },
   }),
-  actionCard(R, 'C-A4', '地下管道', 'logistics', { supply: 4 }, '旧城的管道网比地图更可靠，盟友也可以借道。', {
-    requiresAlly: true,
+  actionCard(R, 'C-A4', '地下管道', 'logistics', { supply: 2 }, '旧城的管道网比地图更可靠，什么都能运，就是要有人下去抬。', {
+    cost: { manpower: 1 },
   }),
-  actionCard(R, 'C-A5', '地下印刷所', 'propaganda', { morale: 3, supply: 1 }, '传单比子弹更能让人上街。', {
+  actionCard(R, 'C-A5', '地下印刷所', 'propaganda', { morale: 3 }, '传单比子弹更能让人上街。', {
     cost: { supply: 1 },
   }),
-  actionCard(R, 'C-A6', '学校疏散', 'propaganda', { morale: 3, manpower: -1 }, '把孩子送出战区，留下的人反而更能拼命。'),
-  actionCard(R, 'C-A7', '费斯特的工坊', 'convert', { supply: 3, manpower: 1 }, '铁皮与齿轮拼出能用的东西，用声望换来工时。', {
-    cost: { supply: 2 },
+  actionCard(R, 'C-A6', '学校疏散', 'propaganda', { morale: 3 }, '把孩子送出战区，留下的人反而更能拼命。', {
+    cost: { manpower: 1 },
   }),
+  actionCard(R, 'C-A7', '费斯特的工坊', 'convert', { supply: 1, manpower: 1 }, '铁皮与齿轮拼出能用的东西，用声望换来工时。', {}),
   actionCard(R, 'C-A8', '邻里互助', 'convert', { morale: 2, manpower: 2 }, '一条街养活另一条街，物资在街区之间重新分配。', {
     cost: { supply: 1 },
   }),
@@ -30,14 +28,15 @@ export const SSC_ACTIONS = [
     cost: { supply: 1 },
     special: 'reveal',
   }),
-  actionCard(R, 'C-A10', '诺伯特区自救', 'gamble', {}, '被抛离的城区只能靠自己：要么撑住，要么一起沉下去。', {
-    roll: { chance: 0.5, win: { morale: 4, supply: 1 }, lose: { manpower: -2, supply: -2 } },
+  actionCard(R, 'C-A10', '诺伯特区自救', 'gamble', { morale: 2, supply: 1 }, '被抛离的城区自己撑了起来，代价是所有能干活的人都上了墙。', {
+    cost: { manpower: 2 },
   }),
   actionCard(R, 'C-A11', '街角守望', 'intel', { manpower: 2, morale: 1 }, '邻居们轮流守着街口，谁来了都看得见。', {
     cost: { supply: 1 },
+    special: 'immunity',
   }),
-  actionCard(R, 'C-A12', '废料交易', 'gamble', {}, '一车废料换来的可能是零件，也可能只是一堆铁锈。', {
-    roll: { chance: 0.6, win: { supply: 3 }, lose: { morale: -2 } },
+  actionCard(R, 'C-A12', '废料交易', 'gamble', { supply: 2 }, '一车废料换回整整一车零件；只是这买卖传出去，街区的名声不太好听。', {
+    cost: { morale: 2 },
   }),
 ]
 

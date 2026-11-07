@@ -48,7 +48,7 @@ export const GENERIC_CARDS = [
     special: 'coop',
     roll: { chance: 0.6, win: { morale: 2 }, lose: { morale: -1 } },
   }),
-  actionCard('GENERIC', 'G-12', '中立义勇军', 'assault', {}, '义勇军只为已结盟的阵营效力，名单由中立方保管；没有同盟时整张牌无效。', {
+  actionCard('GENERIC', 'G-12', '中立义勇军', 'assault', {}, '义勇军替出得起价的一方打仗；没有同盟牵线的散兵，谁也不肯替他们卖命。', {
     requiresAlly: true,
     roll: { chance: 0.6, win: { manpower: 3 }, lose: { supply: -1 } },
   }),

@@ -4,10 +4,10 @@ import type { FactionId } from '@/types'
 
 const ALL: FactionId[] = ['SARK', 'VIC', 'RI', 'TARA', 'REU', 'SSC']
 
-function shuffle<T>(list: T[]): T[] {
+function shuffle<T>(list: T[], random: () => number): T[] {
   const arr = [...list]
   for (let i = arr.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(random() * (i + 1))
     ;[arr[i], arr[j]] = [arr[j], arr[i]]
   }
   return arr
@@ -18,9 +18,9 @@ function hasHostilePair(ids: FactionId[]): boolean {
 }
 
 /** 随机抽 4 个不重复阵营，若没有敌对关系则重抽 */
-export function assignFactions(): FactionId[] {
+export function assignFactions(random: () => number = Math.random): FactionId[] {
   for (let attempt = 0; attempt < 200; attempt += 1) {
-    const picked = shuffle(ALL).slice(0, 4)
+    const picked = shuffle(ALL, random).slice(0, 4)
     if (hasHostilePair(picked)) return picked
   }
   return ['SARK', 'VIC', 'RI', 'TARA']

@@ -4,34 +4,28 @@ import { actionCard, designatedCard } from './helper'
 const R = 'REU' as const
 
 export const REU_ACTIONS = [
-  actionCard(R, 'E-A1', '感染者来投', 'assault', { manpower: 4 }, '被赶出城区的人，只能来这里。', {
-    cost: { manpower: 1 },
-  }),
-  actionCard(R, 'E-A2', '溃兵收容', 'assault', { manpower: 2, morale: 2 }, '收编溃兵能壮胆，也能带来纪律问题。', {
-    cost: { morale: 1 },
-  }),
-  actionCard(R, 'E-A3', '游击补给', 'logistics', { supply: 3, manpower: 1 }, '从敌人手里抢来的物资，总比施舍来得快。', {
-    cost: { supply: 1 },
-  }),
-  actionCard(R, 'E-A4', '工人联络', 'logistics', { supply: 2, manpower: 2 }, '工人把仓库钥匙交给整合运动，前提是同盟仍在。', {
-    requiresAlly: true,
+  actionCard(R, 'E-A1', '感染者来投', 'assault', { manpower: 3 }, '被赶出城区的人，只能来这里。', {}),
+  actionCard(R, 'E-A2', '溃兵收容', 'assault', { manpower: 2, morale: 1 }, '收编溃兵能壮胆，也能带来纪律问题。', {}),
+  actionCard(R, 'E-A3', '游击补给', 'logistics', { supply: 2, manpower: 1 }, '从敌人手里抢来的物资，总比施舍来得快。', {}),
+  actionCard(R, 'E-A4', '工人联络', 'logistics', { supply: 2, manpower: 2 }, '工人把仓库钥匙交了出来，钥匙经了三只手才到队里。', {
+    cost: { morale: 2 },
   }),
   actionCard(R, 'E-A5', '塔露拉的演讲', 'propaganda', { morale: 4, manpower: 1 }, '她的话仍然能让最疲惫的人站起来。', {
     cost: { supply: 2 },
   }),
-  actionCard(R, 'E-A6', '新纲领宣讲', 'propaganda', { morale: 3, supply: -1 }, '不再只为感染者，而是为所有被压迫者。'),
-  actionCard(R, 'E-A7', '废作坊制药', 'convert', { supply: 3, morale: 1 }, '地下作坊压出抑制剂，用人力换物资与信任。', {
+  actionCard(R, 'E-A6', '新纲领宣讲', 'propaganda', { morale: 3 }, '不再只为感染者，而是为所有被压迫者。', {
     cost: { supply: 1 },
   }),
+  actionCard(R, 'E-A7', '废作坊制药', 'convert', { supply: 2, morale: 1 }, '地下作坊压出抑制剂，用人力换物资与信任。', {}),
   actionCard(R, 'E-A8', '黑市军火', 'convert', { supply: 4 }, '枪是旧的，子弹是新的，价钱用声望来付。', {
     cost: { manpower: 2 },
   }),
-  actionCard(R, 'E-A9', '工人罢工声援', 'intel', { morale: 2, supply: 1 }, '工厂停摆，城市的齿轮为之一顿，对手的调度暴露出来。', {
-    cost: { morale: 1 },
+  actionCard(R, 'E-A9', '工人罢工声援', 'intel', { morale: 1, supply: 1 }, '工厂停摆，城市的齿轮为之一顿，对手的调度暴露出来。', {
     special: 'reveal',
   }),
-  actionCard(R, 'E-A10', '感染者互助', 'gamble', {}, '互相扶持是唯一还能运转的制度，但它也可能撑不住。', {
-    roll: { chance: 0.5, win: { manpower: 2, supply: 2 }, lose: { supply: -2, morale: -1 } },
+  actionCard(R, 'E-A10', '感染者互助', 'gamble', { manpower: 2, supply: 2 }, '互助网络全部开动，能给的都给了；给完之后，队伍里开始有人怀疑还能撑多久。', {
+    cost: { morale: 2 },
+    special: 'cancelCounter',
   }),
 ]
 

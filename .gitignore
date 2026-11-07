@@ -4,3 +4,12 @@ release/
 *.tsbuildinfo
 .env
 play.html
+
+# 服务端构建产物（由 npm run build / npm start 自动生成）
+server/dist/
+
+# 测试与审查的临时产物
+.screenshots/
+.verify-tmp/
+.audit-tmp/
+dist-single/

@@ -10,11 +10,10 @@ export const RI_ACTIONS = [
   actionCard(R, 'R-A2', '精英小队突袭', 'assault', { manpower: 4 }, '小队切入宿敌后方，打完就走，只留下疲惫。', {
     cost: { morale: 1 },
   }),
-  actionCard(R, 'R-A3', '可露希尔的仓库', 'logistics', { supply: 4 }, '仓库里的货来路不明，但确实能用。', {
-    cost: { supply: 1 },
-  }),
-  actionCard(R, 'R-A4', '医疗协议', 'logistics', { supply: 2, morale: 2 }, '罗德岛向盟友敞开药品与运输通道。', {
-    requiresAlly: true,
+  actionCard(R, 'R-A3', '可露希尔的仓库', 'logistics', { supply: 3 }, '仓库里的货来路不明，但确实能用。', {}),
+  actionCard(R, 'R-A4', '医疗协议', 'logistics', { supply: 2, morale: 1 }, '罗德岛开出一条运输通道，药品与伤员同时在路上；若队伍已转入流亡，这份协议能把人从死亡线上拉回来。', {
+    cost: { manpower: 2 },
+    special: 'revive',
   }),
   actionCard(R, 'R-A5', '医疗救援', 'propaganda', { morale: 4 }, '医疗队把伤员从废墟里拖出来，城市记住了这面旗。', {
     cost: { manpower: 1 },
@@ -32,8 +31,8 @@ export const RI_ACTIONS = [
     cost: { supply: 1 },
     special: 'reveal',
   }),
-  actionCard(R, 'R-A10', '巴别塔档案', 'gamble', {}, '旧档案里也许记着对手的下一步，也许只是一堆残页。', {
-    roll: { chance: 0.6, win: { supply: 3, morale: 2 }, lose: { supply: -1, morale: -2 } },
+  actionCard(R, 'R-A10', '巴别塔档案', 'gamble', { supply: 3, morale: 1 }, '旧档案一页页摊开：对手下一步的部署全在里面，代价是通宵翻找。', {
+    cost: { manpower: 2 },
   }),
 ]
 

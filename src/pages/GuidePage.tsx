@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowRight,
   BookOpen,
+  Clock,
   Coins,
   Flame,
   Hand,
@@ -24,29 +25,29 @@ const ROUND_STEPS = [
   {
     n: 1,
     icon: Users,
-    title: '交接设备',
-    you: '把手机／电脑递给下一位玩家',
-    why: '游戏是「热座」：所有人共用一台设备，轮流操作。交接页会挡住画面，避免别人看到你的手牌。',
+    title: '战前简报',
+    you: '看一眼自己这局的阵营和胜利条件',
+    why: '四人各自在自己的设备上看到不同的目标。别人看到的目标和你不一样，所以这局没有队友，只有交易。',
   },
   {
     n: 2,
     icon: Hand,
     title: '暗选卡牌',
     you: '从 3 张行动牌里挑 2 张，再决定要不要打出手上的指定牌',
-    why: '这是你唯一能改变局势的时刻。选中即锁定，别人看不到你选了什么。',
+    why: '这是你唯一能改变局势的时刻。选中即锁定，其他三个人看不到你选了什么。限时 30 秒，超时会自动替你出牌。',
   },
   {
     n: 3,
     icon: Shield,
     title: '盟约窗口',
     you: '决定要不要结盟，或者撕毁已有的盟约',
-    why: '结盟能让你每回合多抽一张「阵营牌」，但盟友的敌人也会变成你的麻烦。',
+    why: '结盟能让你每回合和盟友谈成一笔「交换」——递过去一样东西，换回另一样，但盟友的敌人也会变成你的麻烦。',
   },
   {
     n: 4,
     icon: Swords,
     title: '统一结算',
-    you: '什么都不用做，看结果',
+    you: '看结果，然后准备下一回合',
     why: '四人的选择同时揭晓，系统按固定顺序一起结算——先出牌不代表占便宜。',
   },
 ]
@@ -106,12 +107,12 @@ const CARD_KINDS = [
     rule: '打出／保留到下一回合／弃掉，三选一。目标有防御牌的话，你可能扑空并被反噬。',
   },
   {
-    tag: '阵营牌',
+    tag: '同盟交换',
     count: '结盟后才有的加餐',
     tone: 'border-fuchsia-400/30 bg-fuchsia-500/5',
     badge: 'bg-fuchsia-500/20 text-fuchsia-200',
-    what: '同盟专属，结算页从 2 张候选里挑 1 张。',
-    rule: '下一回合开始前生效，优先级最高。没结盟就没有这个环节。',
+    what: '每对同盟专属的交换牌，结算页两人一起从 2 张候选里谈成 1 张。',
+    rule: '每张牌写死甲方／乙方两边，谈成后同时结算。下一回合开始前生效，优先级最高。没结盟就没有这个环节。',
   },
 ]
 
@@ -131,7 +132,7 @@ const MISTAKES = [
   },
   {
     wrong: '觉得结盟只是互相帮忙',
-    right: '结盟真正的价值是「阵营牌」——每回合多一次抽取机会，效果还不错。但盟友的仇家也会盯上你。',
+    right: '结盟真正的价值是「同盟交换」——每回合和盟友谈成一笔双向交易，你缺什么就换什么。但盟友的仇家也会盯上你。',
   },
   {
     wrong: '以为前 5 回合分不出胜负所以随便玩',
@@ -151,8 +152,59 @@ export function GuidePage() {
         <p className="text-[10px] uppercase tracking-[0.3em] text-amber-400/80">First Time?</p>
         <h2 className="mt-1 font-display text-2xl text-amber-100">新手引导 · 3 分钟读完就能上桌</h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-300">
-          这是一个四人共用一个屏幕的对抗卡牌游戏。你不用记规则，只要先记住下面这一段话。
+          这是一个四人联机对战的卡牌游戏。你和另外三个人在各自的设备上进同一个房间，
+          所有牌和结算都在服务器上裁决。你不用记规则，只要先记住下面这一段话。
         </p>
+      </div>
+
+      {/* 怎么开始 */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 p-5">
+        <p className="mb-3 flex items-center gap-2 text-sm text-amber-200">
+          <Users className="h-4 w-4" />
+          四个人怎么坐到一张桌上
+        </p>
+        <div className="space-y-2 text-[13px] leading-relaxed text-slate-400">
+          <p>
+            <span className="text-slate-200">1. 一个人创建房间</span>
+            ，会拿到一个 4 位房间码（比如 <span className="font-mono text-amber-200">AB3K</span>）。
+          </p>
+          <p>
+            <span className="text-slate-200">2. 另外三个人打开同一个网址</span>
+            ，输入这个房间码加入。
+          </p>
+          <p>
+            <span className="text-slate-200">3. 四个人都点「准备」</span>
+            ，游戏自动开局。少一个人都开不了。
+          </p>
+          <p className="text-slate-500">
+            中途有人刷新页面或断网，凭浏览器里记的身份会自动回到原座位，手牌不会丢。
+          </p>
+        </div>
+      </div>
+
+      {/* 倒计时规则 */}
+      <div className="rounded-xl border border-sky-400/25 bg-sky-500/5 p-5">
+        <p className="mb-3 flex items-center gap-2 text-sm text-sky-200">
+          <Clock className="h-4 w-4" />
+          每个阶段都有倒计时，超时不会卡住整局
+        </p>
+        <div className="space-y-2 text-[13px] leading-relaxed text-slate-400">
+          <p>
+            <span className="text-slate-200">暗选 30 秒</span>
+            ：选牌的唯一窗口，到点会自动替你打出两张行动牌，指定牌默认保留（不会替你打人）。
+          </p>
+          <p>
+            <span className="text-slate-200">盟约 45 秒</span>
+            ：谈结盟的时间，到点自动跳过，直接进结算。
+          </p>
+          <p>
+            <span className="text-slate-200">简报 60 秒 / 结算 60 秒</span>
+            ：看目标、看战报的时间，到点自动往下走。
+          </p>
+          <p className="text-slate-500">
+            超时只是「自动帮你走一步」的保险，不是惩罚。想好好打当然要自己选。
+          </p>
+        </div>
       </div>
 
       {/* 一句话说清 */}
