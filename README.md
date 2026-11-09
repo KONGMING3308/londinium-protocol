@@ -155,6 +155,7 @@ npm start
 | `scripts/test-online.mjs` | 四客户端协议级端到端测试 |
 | `scripts/test-bid-protection.mjs` | B7 低补给竞标扣费减半的边界锁定（17 项） |
 | `scripts/test-victory-thresholds.mjs` | 各阵营判胜门槛 / 并列判胜规则的数值锁定（44 项） |
+| `scripts/test-resume.mjs` | 断线保座、token 24 小时有效期、全员离线冻结托管（13 项） |
 | `scripts/test-browser.mjs` | 四个真实浏览器上下文的联机实测 |
 
 ## 改数据在哪改
@@ -188,7 +189,7 @@ npm start
 ## 测试
 
 ```powershell
-npm run test                # 全部十一个套件，共 347 项检查
+npm run test                # 全部十二个套件，共 360 项检查
 npm run test:engine         # 引擎：200 局完整对局，验证无死锁（9 项）
 npm run test:online         # 协议：四客户端联机、脱敏、重连（35 项）
 npm run test:security       # 安全：伪造身份/越权、四视角脱敏、畸形消息与洪泛（72 项）
@@ -200,6 +201,7 @@ npm run test:story          # 剧情事件与中立竞标（66 项）
 npm run test:pact           # 阵营名/盟约事件/战争进度（27 项）
 npm run test:bidprot        # B7 低补给竞标扣费减半（17 项）
 npm run test:victory        # 各阵营判胜门槛与并列判胜规则（44 项）
+npm run test:resume         # 断线保座 / token 有效期 / 全员离线冻结托管（13 项）
 npm run test:release        # 发布包验收：解压到干净目录、无 node_modules 打完一整局（27 项）
 npm run test:browser        # 四个真实浏览器上下文打完整局（需先 build，调用本机 Edge，21 项）
 npm run test:local:browser  # 浏览器里验证本地热座模式（13 项，无需任何后端）
@@ -212,7 +214,7 @@ npm run typecheck           # 类型检查
 
 ## 已知限制
 
-- **服务端状态在内存里**：重启服务端会丢失所有进行中的对局（客户端会自动重连，但房间已不存在）。单机原型够用，要长期运行得接数据库。
-- 无账号体系：座位身份靠一次性 token，清掉浏览器 localStorage 就回不到原座位。
-- 大厅阶段离开会释放座位；**对局开始后断线会保留座位**并留有重连宽限期，超时未回由服务端托管自动出牌。
+- **服务端状态在内存里**：重启服务端会丢失所有进行中的对局（客户端会自动重连，但房间已不存在）。座位保留期再长也救不了进程重启，要长期运行得接落盘持久化。
+- 无账号体系：座位身份靠一次性 token（**有效期 24 小时，重连与在线时自动续期**），清掉浏览器 localStorage 就回不到原座位。
+- **刷新 / 切屏 / 锁屏都不会丢座位**：所有阶段（含大厅）断线都保留座位；四个人一起断线时倒计时会冻结，不会被托管代打。只有点「离开房间」才释放座位。
 - 数值平衡经过一轮蒙特卡洛调参（v0.4.3），仍待真人试玩反馈后继续调整（见 [docs/06-交接说明.md](docs/06-交接说明.md) 的 TODO 清单）。

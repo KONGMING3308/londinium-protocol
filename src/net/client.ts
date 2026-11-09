@@ -97,6 +97,10 @@ class Net {
   private status: NetStatus = 'idle'
   /** 重连时用于自动回到座位 */
   private rejoin: (() => ClientMessage | null) | null = null
+  /** 最近一次收到服务端消息的时刻（含 pong），用于判定连接是否已「半死」 */
+  private lastSeen = 0
+  /** 页面可见性 / 网络恢复监听是否已注册（全局只需一次） */
+  private wakeHandlersInstalled = false
 
   getStatus(): NetStatus {
     return this.status
@@ -133,6 +137,7 @@ class Net {
 
   connect(): void {
     if (typeof window === 'undefined') return
+    this.installWakeHandlers()
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return
     }
@@ -150,6 +155,7 @@ class Net {
 
     ws.onopen = () => {
       this.retry = 0
+      this.lastSeen = Date.now()
       this.setStatus('open')
       // 重连成功后立刻尝试回到原座位，再补发离线期间排队的消息
       const rejoin = this.rejoin?.() ?? null
@@ -164,6 +170,7 @@ class Net {
     }
 
     ws.onmessage = (ev) => {
+      this.lastSeen = Date.now()
       const msg = parseServerMessage(typeof ev.data === 'string' ? ev.data : '')
       if (!msg) return
       if (msg.type === 'snapshot') {
@@ -208,8 +215,60 @@ class Net {
   private startHeartbeat(): void {
     this.stopHeartbeat()
     this.heartbeat = window.setInterval(() => {
+      // 手机切屏 / 休眠后回来的常见状态是「socket 还在，但链路已经死了」：
+      // 浏览器的 onclose 要等到 TCP 超时才来，期间玩家点什么都没反应。
+      // 服务端每 20 秒内一定会有 pong 或快照，45 秒没有任何消息就直接判死重连。
+      if (this.lastSeen > 0 && Date.now() - this.lastSeen > 45000) {
+        const dead = this.ws
+        this.ws = null
+        try {
+          dead?.close()
+        } catch {
+          /* 忽略 */
+        }
+        this.stopHeartbeat()
+        this.setStatus('reconnecting')
+        this.scheduleRetry()
+        return
+      }
       this.send({ type: 'ping', t: Date.now() })
     }, 20000)
+  }
+
+  /**
+   * 页面重新可见 / 网络恢复时立刻尝试重连。
+   *
+   * 不装这两个监听的话，切屏太久会让退避定时器停摆，回到前台还得再等一轮退避，
+   * 玩家看到的就是「回来卡在重连中」甚至以为掉线了。只注册一次，全局生效。
+   */
+  private installWakeHandlers(): void {
+    if (this.wakeHandlersInstalled || typeof window === 'undefined') return
+    this.wakeHandlersInstalled = true
+    const wake = () => {
+      if (this.intentionalClose) return
+      if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+        // 已经有连接：只是把退避清掉，顺手补一条 ping 验证链路
+        if (this.ws.readyState === WebSocket.OPEN) {
+          try {
+            this.ws.send(JSON.stringify({ type: 'ping', t: Date.now() }))
+          } catch {
+            /* 忽略 */
+          }
+        }
+        return
+      }
+      if (this.retryTimer !== null) {
+        window.clearTimeout(this.retryTimer)
+        this.retryTimer = null
+      }
+      this.retry = 0
+      this.connect()
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') wake()
+    })
+    window.addEventListener('online', wake)
+    window.addEventListener('focus', wake)
   }
 
   private stopHeartbeat(): void {

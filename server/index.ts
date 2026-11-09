@@ -41,10 +41,30 @@ const PORT = Number(process.env.PORT ?? 8787)
 const HOST = process.env.HOST ?? '0.0.0.0'
 /** 静态产物目录：默认用 build 输出的 dist */
 const STATIC_DIR = resolve(process.env.STATIC_DIR ?? join(process.cwd(), 'dist'))
-/** 房间空闲多久后回收（毫秒），默认 6 小时 */
-const ROOM_TTL = Number(process.env.ROOM_TTL ?? 6 * 60 * 60 * 1000)
-/** 全员断线后的重连宽限期（毫秒）。对局中断线保留座位，等这段时间再回收 */
-const EMPTY_GRACE_MS = Number(process.env.EMPTY_GRACE_MS ?? 3 * 60 * 1000)
+/** 房间空闲多久后回收（毫秒），默认 24 小时（与 token 有效期一致） */
+const ROOM_TTL = Number(process.env.ROOM_TTL ?? 24 * 60 * 60 * 1000)
+/**
+ * 重连凭证的有效期（毫秒），默认 24 小时。
+ *
+ * 玩家切屏、锁屏、地铁里断网，回来时应该还在原来的座位上——所以座位与 token
+ * 要活得比「一局游戏」更久。24 小时是用户明确要求的「保持一天」。
+ */
+const TOKEN_TTL = Number(process.env.TOKEN_TTL_MS ?? 24 * 60 * 60 * 1000)
+/**
+ * 全员断线后的座位保留期（毫秒），默认 24 小时。
+ *
+ * 之前是 3 分钟：四个人一起切屏（手机上太常见了）超过 3 分钟，房间就被回收，
+ * token 全部失效，回来只能重开一局。这正是「一切屏就重置」的根因。
+ */
+const EMPTY_GRACE_MS = Number(process.env.EMPTY_GRACE_MS ?? 24 * 60 * 60 * 1000)
+/**
+ * 空闲房间数量上限（内存保护）。
+ *
+ * 座位保留期拉长到一天后，理论上会有很多「没人但还活着」的房间堆着。
+ * 4 人小房间的状态只有几十 KB，几百个不构成压力，但不能无上限——
+ * 超过这个数就按最久没活动的先回收。
+ */
+const MAX_IDLE_ROOMS = Number(process.env.MAX_IDLE_ROOMS ?? 500)
 
 /**
  * 各阶段决策时限（毫秒）。默认：暗选 30 秒、盟约 45 秒、简报 60 秒。
@@ -76,6 +96,8 @@ interface Seat {
   playerId: string
   /** 重连凭证：只发给本人，其他人拿不到 */
   token: string
+  /** token 过期时刻（毫秒时间戳）。过期后不再承认这条凭证 */
+  tokenExpiresAt: number
   /** 当前连接；null 表示断线中，座位与手牌保留 */
   socket: WebSocket | null
   name: string
@@ -92,6 +114,14 @@ interface Room {
   timer: ReturnType<typeof setTimeout> | null
   /** 全员断线的时间戳；null 表示当前至少有一人在线。用于断线宽限期 */
   emptySince: number | null
+  /**
+   * 全员离线时被「冻结」的剩余决策时间（毫秒）。
+   *
+   * 有人离线不该被托管掉他还没做的决策——四个人一起切屏时更是如此：
+   * 之前 30 秒一到，托管会把全场的牌全部代打一遍，回合白白推进，
+   * 玩家切回来发现局已经跑了一大段。现在有人重新连上就按剩余时间继续倒计时。
+   */
+  pausedRemaining: number | null
 }
 
 const rooms = new Map<string, Room>()
@@ -123,6 +153,22 @@ function connectedIdsOf(room: Room): Set<string> {
   return ids
 }
 
+/** 当前有活连接的座位数（0 = 全员离线） */
+function onlineSeatCount(room: Room): number {
+  return room.seats.reduce((n, s) => n + (s.socket && s.socket.readyState === 1 ? 1 : 0), 0)
+}
+
+/** 造一个新座位，token 从现在起有效 TOKEN_TTL */
+function makeSeat(playerId: string, name: string, socket: WebSocket): Seat {
+  return {
+    playerId,
+    token: randomChars(24),
+    tokenExpiresAt: Date.now() + TOKEN_TTL,
+    socket,
+    name,
+  }
+}
+
 function send(socket: WebSocket, msg: unknown): void {
   if (socket.readyState !== 1) return
   try {
@@ -143,6 +189,8 @@ function broadcast(room: Room): void {
   const online = connectedIdsOf(room)
   room.seats.forEach((seat) => {
     if (!seat.socket || seat.socket.readyState !== 1) return
+    // 在线即续期：只要人还在局里，凭证就不该在他专心打牌的时候悄悄过期
+    seat.tokenExpiresAt = Date.now() + TOKEN_TTL
     const snap: Snapshot = snapshotFor(room.state, seat.playerId, online, room.seq, {
       playerId: seat.playerId,
       token: seat.token,
@@ -181,14 +229,29 @@ function clearRoomTimer(room: Room): void {
  * 每次状态推进后都要调用（bindDeadline 会被挂进广播路径）。
  * 到点后：给所有还没动作的人执行默认操作，然后广播；如果阶段因此推进了，
  * 新的 deadline 会由后续的 broadcast 重新绑定，形成闭环。
+ *
+ * 全员离线时**不计时**：把剩余时间冻进 pausedRemaining，等人回来再继续。
+ * 否则「四个人一起切屏 30 秒」就够让托管把这一回合的所有牌代打完。
  */
 function bindDeadline(room: Room): void {
   clearRoomTimer(room)
 
   const deadline = room.state.deadline
-  if (deadline === null) return
+  if (deadline === null) {
+    room.pausedRemaining = null
+    return
+  }
   // 阶段已结束 / 房间已空，不必再计时
-  if (room.state.phase === 'lobby' || room.state.phase === 'result') return
+  if (room.state.phase === 'lobby' || room.state.phase === 'result') {
+    room.pausedRemaining = null
+    return
+  }
+  // 无人在线 → 冻结
+  if (onlineSeatCount(room) === 0) {
+    room.pausedRemaining = Math.max(0, deadline - Date.now())
+    return
+  }
+  room.pausedRemaining = null
 
   const delay = Math.max(0, deadline - Date.now())
   room.timer = setTimeout(() => {
@@ -205,12 +268,33 @@ function bindDeadline(room: Room): void {
 }
 
 /**
+ * 有人回到房间：把冻结的剩余时间接回 deadline。
+ *
+ * 不直接恢复原始 deadline —— 那可能已经过期几小时，会导致「一回来就被托管」。
+ * 按剩余时长重新计，等于玩家离开时那一刻的倒计时被暂存了。
+ */
+function thawDeadline(room: Room): void {
+  if (room.pausedRemaining === null) return
+  const remaining = room.pausedRemaining
+  room.pausedRemaining = null
+  if (room.state.deadline !== null) {
+    room.state = { ...room.state, deadline: Date.now() + remaining }
+  }
+}
+
+/**
  * 到点：把所有「还没动作」的玩家都托管掉。
  * 只要还有人没动作就逐个补，直到阶段推进或没有可托管的对象。
  */
 function onPhaseTimeout(room: Room): void {
   const phase = room.state.phase
   if (phase === 'lobby' || phase === 'result') return
+  // 全员离线时兜一层：即使定时器因为某种原因还是响了，也不要替不在场的人出牌
+  if (onlineSeatCount(room) === 0) {
+    const deadline = room.state.deadline
+    room.pausedRemaining = deadline === null ? null : Math.max(0, deadline - Date.now())
+    return
+  }
 
   // 最多迭代 8 次（4 人 × 可能的连锁推进），防止意外死循环
   for (let guard = 0; guard < 8; guard += 1) {
@@ -282,18 +366,12 @@ function handleCreate(socket: WebSocket, msg: Extract<ClientMessage, { type: 'cr
   const room: Room = {
     roomId,
     state: joined.state,
-    seats: [
-      {
-        playerId: joined.playerId,
-        token: randomChars(24),
-        socket,
-        name: asString(msg.name).trim().slice(0, 12) || '房主',
-      },
-    ],
+    seats: [makeSeat(joined.playerId, asString(msg.name).trim().slice(0, 12) || '房主', socket)],
     seq: 0,
     lastActive: Date.now(),
     timer: null,
     emptySince: null,
+    pausedRemaining: null,
   }
   rooms.set(roomId, room)
   console.log(`[room] 创建 ${roomId}，房主 ${room.seats[0].name}`)
@@ -304,8 +382,20 @@ function handleJoin(socket: WebSocket, msg: Extract<ClientMessage, { type: 'join
   const roomId = asString(msg.roomId).trim().toUpperCase()
   const room = rooms.get(roomId)
   if (!room) {
-    sendError(socket, 'room_not_found', '房间不存在或已解散。')
+    sendError(socket, 'room_not_found', '房间不存在或已解散（长时间没人回来）。请让房主重新建一个。')
     return
+  }
+
+  // 0. 大厅里清扫「过期且离线」的占位：否则过期座位会把 4 个位置锁死，谁都进不来
+  if (room.state.phase === 'lobby') {
+    const stale = room.seats.filter((s) => !s.socket && Date.now() > s.tokenExpiresAt)
+    if (stale.length > 0) {
+      stale.forEach((s) => {
+        room.state = leaveAsPlayer(room.state, s.playerId)
+        console.log(`[room] ${roomId} ${s.name} 的重连凭证过期，释放座位`)
+      })
+      room.seats = room.seats.filter((s) => !stale.includes(s))
+    }
   }
 
   // 1. 重连优先：token 命中就直接坐回原位，手牌与状态全保留
@@ -313,21 +403,29 @@ function handleJoin(socket: WebSocket, msg: Extract<ClientMessage, { type: 'join
   if (token) {
     const seat = room.seats.find((s) => s.token === token)
     if (seat) {
-      // 同一座位不应有两条活连接：旧连接先关掉
-      if (seat.socket && seat.socket !== socket && seat.socket.readyState === 1) {
-        try {
-          seat.socket.close()
-        } catch {
-          /* 忽略 */
+      // token 过期：不承认这条凭证，但也不把座位拆掉（本人可能还能用新 token 加入）
+      if (Date.now() > seat.tokenExpiresAt) {
+        console.log(`[room] ${roomId} ${seat.name} 的 token 已过期，按新玩家处理`)
+      } else {
+        // 同一座位不应有两条活连接：旧连接先关掉
+        if (seat.socket && seat.socket !== socket && seat.socket.readyState === 1) {
+          try {
+            seat.socket.close()
+          } catch {
+            /* 忽略 */
+          }
         }
+        seat.socket = socket
+        // 续期：回来一次就重新给满 24 小时，避免中途过期
+        seat.tokenExpiresAt = Date.now() + TOKEN_TTL
+        room.emptySince = null
+        thawDeadline(room)
+        console.log(`[room] ${roomId} ${seat.name} 重连`)
+        broadcast(room)
+        return
       }
-      seat.socket = socket
-      room.emptySince = null
-      console.log(`[room] ${roomId} ${seat.name} 重连`)
-      broadcast(room)
-      return
     }
-    // token 失效（服务端重启等）→ 继续走普通加入
+    // token 失效（服务端重启 / 过期）→ 继续走普通加入
   }
 
   if (locate(socket)) {
@@ -342,14 +440,14 @@ function handleJoin(socket: WebSocket, msg: Extract<ClientMessage, { type: 'join
     return
   }
   room.state = joined.state
-  const seat: Seat = {
-    playerId: joined.playerId,
-    token: randomChars(24),
+  const seat = makeSeat(
+    joined.playerId,
+    asString(msg.name).trim().slice(0, 12) || `玩家${room.seats.length + 1}`,
     socket,
-    name: asString(msg.name).trim().slice(0, 12) || `玩家${room.seats.length + 1}`,
-  }
+  )
   room.seats.push(seat)
   room.emptySince = null
+  thawDeadline(room)
   console.log(`[room] ${roomId} ${seat.name} 加入（${room.seats.length}/4）`)
   broadcast(room)
 }
@@ -497,14 +595,16 @@ function handleClose(socket: WebSocket): void {
   if (!located) return
   const { room, seat } = located
   seat.socket = null
-  // 大厅阶段断线 = 离开；对局中断线保留座位等重连
-  if (room.state.phase === 'lobby') {
-    room.state = leaveAsPlayer(room.state, seat.playerId)
-    room.seats = room.seats.filter((s) => s.playerId !== seat.playerId)
-    console.log(`[room] ${room.roomId} ${seat.name} 断线离开（大厅）`)
-  } else {
-    console.log(`[room] ${room.roomId} ${seat.name} 断线（保留座位）`)
-  }
+  /**
+   * 断线一律保留座位等重连——大厅阶段也一样。
+   *
+   * 之前大厅阶段断线等于「离开」：玩家在准备界面刷新一下 / 手机切个屏，
+   * 座位就被摘掉，token 随之作废，回来要重新输房间码。那是最常见的「重置」。
+   * 真正想离开的人走的是显式 leaveRoom（那个分支才移除座位）。
+   */
+  console.log(
+    `[room] ${room.roomId} ${seat.name} 断线（保留座位，${room.state.phase === 'lobby' ? '大厅' : '对局中'}）`,
+  )
   dropRoomIfEmpty(room)
   if (rooms.has(room.roomId)) broadcast(room)
 }
@@ -616,12 +716,12 @@ function createApp(): Server {
     socket.on('error', () => handleClose(socket))
   })
 
-  // 定期回收空闲房间：全员断线超过宽限期，或长时间无活动
+  // 定期回收空闲房间：全员断线超过保留期，或长时间无活动
   const sweeper = setInterval(() => {
     const now = Date.now()
     for (const [code, room] of rooms) {
       const allOffline = room.seats.every((s) => !s.socket)
-      // 全员断线要等到宽限期结束才回收，给玩家重连的机会
+      // 全员断线要等到保留期结束才回收，给玩家重连的机会
       const graceExpired =
         allOffline && room.emptySince !== null && now - room.emptySince > EMPTY_GRACE_MS
       if (graceExpired || now - room.lastActive > ROOM_TTL) {
@@ -630,7 +730,20 @@ function createApp(): Server {
         console.log(`[room] ${code} 超时回收`)
       }
     }
-  }, 5 * 60 * 1000)
+    // 内存保护：座位保留期拉到一天后，空闲房间可能堆积，超过上限按最久没活动的先清
+    const idle = [...rooms.values()].filter((r) => r.seats.every((s) => !s.socket))
+    if (idle.length > MAX_IDLE_ROOMS) {
+      idle
+        .sort((a, b) => a.lastActive - b.lastActive)
+        .slice(0, idle.length - MAX_IDLE_ROOMS)
+        .forEach((room) => {
+          clearRoomTimer(room)
+          rooms.delete(room.roomId)
+          console.log(`[room] ${room.roomId} 空闲房间超上限，回收`)
+        })
+    }
+    // 间隔可调：自动化测试要验证「保留期到点回收」，不能真等 5 分钟
+  }, Number(process.env.SWEEP_MS ?? 5 * 60 * 1000))
   sweeper.unref()
 
   return server

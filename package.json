@@ -1,7 +1,7 @@
 {
   "name": "londinium-protocol",
   "private": true,
-  "version": "0.4.4",
+  "version": "0.4.5",
   "type": "module",
   "scripts": {
     "predev": "node scripts/sync-version.mjs",
@@ -22,7 +22,7 @@
     "test:release": "node scripts/build-release.mjs && node scripts/test-release.mjs",
     "test:browser": "node scripts/build-server.mjs && node scripts/test-browser.mjs",
     "test:local:browser": "node scripts/build-server.mjs && node scripts/test-local-browser.mjs",
-    "test": "npm run test:engine && npm run test:online && npm run test:security && npm run test:local && npm run test:timer && npm run test:hold && npm run test:faction && npm run test:story && npm run test:pact && npm run test:bidprot && npm run test:victory",
+    "test": "npm run test:engine && npm run test:online && npm run test:security && npm run test:local && npm run test:timer && npm run test:hold && npm run test:faction && npm run test:story && npm run test:pact && npm run test:bidprot && npm run test:victory && npm run test:resume",
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/check-version.mjs",
     "test:timer": "node scripts/test-timer.mjs",
@@ -31,7 +31,8 @@
     "test:story": "node scripts/test-story-bid.mjs",
     "test:pact": "node scripts/test-pact-story.mjs",
     "test:bidprot": "node scripts/test-bid-protection.mjs",
-    "test:victory": "node scripts/test-victory-thresholds.mjs"
+    "test:victory": "node scripts/test-victory-thresholds.mjs",
+    "test:resume": "node scripts/build-server.mjs && node scripts/test-resume.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.451.0",
