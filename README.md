@@ -32,13 +32,13 @@ npm run dev:online
 ### 方式一：打包后上传服务器（推荐给真服务器）
 
 ```powershell
-npm run release    # 生成 release/londinium-protocol-v0.4.4/ 和同名 .zip
+npm run release    # 生成 release/londinium-protocol-v0.4.7/ 和同名 .zip
 ```
 
 把 zip 传到服务器解压，然后：
 
 ```bash
-cd londinium-protocol-v0.4.4
+cd londinium-protocol-v0.4.7
 node server.mjs
 ```
 
@@ -102,17 +102,21 @@ npm start
 | 阵营交换 | 按座次逐对排队拍板 | **每对同盟并行拍板**，不用排队 |
 | 存档 | 浏览器 localStorage | 服务端内存，凭 token 重连 |
 
+## 更新记录
+
+每个版本的对外可见变更见 [CHANGELOG.md](CHANGELOG.md)。
+
 ## 版本
 
-当前版本 **v0.4.4**。
+当前版本 **v0.4.7**。
 
 版本号只写在 `package.json` 的 `version` 字段，其余通道全部自动派生，不存在第二处需要手工同步的地方：
 
 | 读取方 | 通道 | 读到的内容 |
 |---|---|---|
-| 玩家 | 界面页脚右下角 | `v0.4.4`（鼠标悬停可看构建时刻） |
-| 浏览器控制台 | `__LONDINIUM__.version` | `"0.4.4"` |
-| 爬虫 / 查看网页源码 | `<meta name="app-version" content="0.4.4">` | 无需执行 JS |
+| 玩家 | 界面页脚右下角 | `v0.4.7`（鼠标悬停可看构建时刻） |
+| 浏览器控制台 | `__LONDINIUM__.version` | `"0.4.7"` |
+| 爬虫 / 查看网页源码 | `<meta name="app-version" content="0.4.7">` | 无需执行 JS |
 | 静态托管 / 运维 | `GET /version.json`、`GET /version.txt` | JSON / 单行文本 |
 | 工程侧 / CI | `npm run version:check` | 不一致则以非 0 退出 |
 
