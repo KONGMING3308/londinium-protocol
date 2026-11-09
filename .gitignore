@@ -13,3 +13,6 @@ server/dist/
 .verify-tmp/
 .audit-tmp/
 dist-single/
+
+# 打包产物（zip 通过 Release 分发，不纳入版本库）
+*.zip
