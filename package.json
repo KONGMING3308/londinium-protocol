@@ -1,7 +1,7 @@
 {
   "name": "londinium-protocol",
   "private": true,
-  "version": "0.4.6",
+  "version": "0.4.7",
   "type": "module",
   "scripts": {
     "predev": "node scripts/sync-version.mjs",
@@ -14,7 +14,7 @@
     "build": "tsc -b && vite build && node scripts/build-server.mjs",
     "release": "npm run build && node scripts/build-release.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -p tsconfig.server.json",
     "test:engine": "node scripts/test-engine.mjs",
     "test:online": "node scripts/build-server.mjs && node scripts/test-online.mjs",
     "test:security": "node scripts/build-server.mjs && node scripts/test-security.mjs",
@@ -22,7 +22,7 @@
     "test:release": "node scripts/build-release.mjs && node scripts/test-release.mjs",
     "test:browser": "node scripts/build-server.mjs && node scripts/test-browser.mjs",
     "test:local:browser": "node scripts/build-server.mjs && node scripts/test-local-browser.mjs",
-    "test": "npm run test:engine && npm run test:online && npm run test:security && npm run test:local && npm run test:timer && npm run test:hold && npm run test:faction && npm run test:story && npm run test:pact && npm run test:bidprot && npm run test:victory && npm run test:resume && npm run test:identity",
+    "test": "npm run test:engine && npm run test:online && npm run test:security && npm run test:local && npm run test:timer && npm run test:hold && npm run test:faction && npm run test:story && npm run test:pact && npm run test:bidprot && npm run test:victory && npm run test:resume && npm run test:identity && npm run test:persist",
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/check-version.mjs",
     "test:timer": "node scripts/test-timer.mjs",
@@ -34,7 +34,9 @@
     "test:victory": "node scripts/test-victory-thresholds.mjs",
     "test:resume": "node scripts/build-server.mjs && node scripts/test-resume.mjs",
     "test:identity": "node scripts/test-identity.mjs",
-    "test:multitab": "npm run build && node scripts/test-multitab.mjs"
+    "test:multitab": "npm run build && node scripts/test-multitab.mjs",
+    "typecheck:server": "tsc -p tsconfig.server.json",
+    "test:persist": "node scripts/build-server.mjs && node scripts/test-persist.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.451.0",
@@ -50,6 +52,7 @@
     "@types/node": "^20.19.43",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "playwright-core": "^1.48.2",

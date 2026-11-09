@@ -51,6 +51,8 @@ if (!existsSync(RELEASE)) {
 
 /* ---------- 1. 模拟「上传到服务器」：复制到干净临时目录 ---------- */
 const deployDir = mkdtempSync(join(tmpdir(), 'londinium-deploy-'))
+/** 落盘目录指到临时目录（否则会在部署目录里生成 data/） */
+const persistDir = mkdtempSync(join(tmpdir(), 'londinium-test-data-'))
 cpSync(RELEASE, deployDir, { recursive: true })
 
 const hasNodeModules = existsSync(join(deployDir, 'node_modules'))
@@ -115,7 +117,7 @@ check(
   const p1 = 8821
   const first = spawn(process.execPath, ['server.mjs'], {
     cwd: deployDir,
-    env: { ...process.env, PORT: String(p1), HOST: '127.0.0.1' },
+    env: { ...process.env, PORT: String(p1), HOST: '127.0.0.1', DATA_DIR: persistDir },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let firstLog = ''
@@ -133,7 +135,7 @@ check(
     // 同样想用 p1 再起一个，应该自动落到 p1+1，而不是崩掉
     const second = spawn(process.execPath, ['server.mjs'], {
       cwd: deployDir,
-      env: { ...process.env, PORT: String(p1), HOST: '127.0.0.1' },
+      env: { ...process.env, PORT: String(p1), HOST: '127.0.0.1', DATA_DIR: persistDir },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let secondLog = ''
@@ -171,7 +173,7 @@ const httpBase = `http://127.0.0.1:${PORT}/`
 
 const server = spawn(process.execPath, ['server.mjs'], {
   cwd: deployDir,
-  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1' },
+  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', DATA_DIR: persistDir },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 

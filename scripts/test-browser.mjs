@@ -11,13 +11,16 @@
  *   node scripts/test-browser.mjs
  */
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '..')
+/** 落盘目录指到临时目录：测试不该往仓库或部署目录里写房间数据 */
+const persistDir = mkdtempSync(join(tmpdir(), 'londinium-test-data-'))
 
 /** 本机 Edge 路径候选：优先系统安装版 */
 const EDGE_CANDIDATES = [
@@ -41,7 +44,7 @@ function check(name, ok, detail = '') {
 function startServer(port) {
   const child = spawn(process.execPath, [resolve(root, 'server/dist/index.mjs')], {
     cwd: root,
-    env: { ...process.env, PORT: String(port) },
+    env: { ...process.env, PORT: String(port), DATA_DIR: persistDir },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   child.stdout.on('data', () => {})

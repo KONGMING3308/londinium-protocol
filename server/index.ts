@@ -15,6 +15,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs'
 import { extname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer, type WebSocket } from 'ws'
+import { createPersister, reviveState, type PersistedRoom, type Persister } from './persist'
 import {
   autoActFor,
   briefingAck,
@@ -65,6 +66,18 @@ const EMPTY_GRACE_MS = Number(process.env.EMPTY_GRACE_MS ?? 24 * 60 * 60 * 1000)
  * 超过这个数就按最久没活动的先回收。
  */
 const MAX_IDLE_ROOMS = Number(process.env.MAX_IDLE_ROOMS ?? 500)
+/**
+ * 房间落盘目录（默认 `<cwd>/data`）。服务端重启后从这里恢复进行中的对局。
+ *
+ * 保留期再长也只能扛「人走了」，扛不住「进程重启」——一次 `npm start`、
+ * 一次部署更新、一次断电，全场的牌就都没了。落盘之后重启能原样读回：
+ * 引擎状态、手牌、座位 token 全在，玩家刷新页面就回位。
+ *
+ * `PERSIST=0` 可关闭（自动化测试默认就走这条，避免互相污染）。
+ */
+const DATA_DIR = process.env.DATA_DIR ?? join(process.cwd(), 'data')
+/** 是否启用落盘（`PERSIST=0` 关闭） */
+const PERSIST_ENABLED = process.env.PERSIST !== '0'
 
 /**
  * 各阶段决策时限（毫秒）。默认：暗选 30 秒、盟约 45 秒、简报 60 秒。
@@ -125,6 +138,71 @@ interface Room {
 }
 
 const rooms = new Map<string, Room>()
+
+/**
+ * 落盘器：只在真正对外提供服务时启用（`startServer` 传了 dataDir）。
+ *
+ * 测试用 `startServer(port)` 起的实例不落盘，避免各个测试脚本互相污染同一个数据目录。
+ */
+let persister: Persister | null = null
+
+/** 取出房间的可落盘部分（连接与定时器不存，重启后本来就要重建） */
+function toPersisted(room: Room): PersistedRoom {
+  return {
+    roomId: room.roomId,
+    state: room.state,
+    seats: room.seats.map((s) => ({
+      playerId: s.playerId,
+      token: s.token,
+      tokenExpiresAt: s.tokenExpiresAt,
+      name: s.name,
+    })),
+    seq: room.seq,
+    lastActive: room.lastActive,
+    pausedRemaining: room.pausedRemaining,
+    savedAt: Date.now(),
+  }
+}
+
+/** 把内存里的房间排进落盘队列（节流器内部攒批，不会每次都写盘） */
+function persistSoon(): void {
+  if (!persister) return
+  persister.schedule([...rooms.values()].map(toPersisted))
+}
+
+/**
+ * 启动时把落盘里的房间读回来。
+ *
+ * 恢复出来的房间一律是「全员离线」状态：座位、手牌、token 全在，等玩家连回来。
+ * `emptySince` 从此刻重新起算——重启不该吃掉玩家的保留期。
+ */
+function restoreRooms(): void {
+  if (!persister) return
+  const saved = persister.load()
+  if (saved.length === 0) return
+  let restored = 0
+  saved.forEach((entry) => {
+    try {
+      const room: Room = {
+        roomId: entry.roomId,
+        state: reviveState(entry.state),
+        seats: entry.seats.map((s) => ({ ...s, socket: null })),
+        seq: Number.isFinite(entry.seq) ? entry.seq : 0,
+        lastActive: Number.isFinite(entry.lastActive) ? entry.lastActive : Date.now(),
+        timer: null,
+        emptySince: Date.now(),
+        pausedRemaining: entry.pausedRemaining ?? null,
+      }
+      rooms.set(room.roomId, room)
+      // 全员离线 → 这里的 bindDeadline 会把倒计时冻住，等人回来再继续
+      bindDeadline(room)
+      restored += 1
+    } catch (err) {
+      console.error(`[persist] 恢复房间 ${entry.roomId} 失败，已跳过：`, err)
+    }
+  })
+  console.log(`[persist] 从落盘恢复 ${restored} 个房间（座位与手牌已还原，等待玩家重连）`)
+}
 
 /** 房间码字母表：去掉 0/O/1/I 等易混字符 */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -200,6 +278,8 @@ function broadcast(room: Room): void {
   // 状态每变一次就重新对齐阶段定时器：
   // 推进到新阶段会重设、原地变化（例如某人提交）则沿用同一个 deadline。
   bindDeadline(room)
+  // 顺手排一次落盘（节流 800ms）：这一步之后重启也能回到同一个局面
+  persistSoon()
 }
 
 /** 找到某 socket 所在的房间与座位 */
@@ -326,6 +406,7 @@ function dropRoomIfEmpty(room: Room): void {
     clearRoomTimer(room)
     rooms.delete(room.roomId)
     console.log(`[room] ${room.roomId} 无人，回收`)
+    persistSoon()
     return
   }
   // 对局中断线：座位与手牌保留，给一段宽限期等人重连。
@@ -679,8 +760,14 @@ function serveStatic(req: IncomingMessage, res: ServerResponse): void {
  * 启动
  * ------------------------------------------------------------------ */
 
-function createApp(): Server {
+/**
+ * @param options.dataDir 传了才启用落盘（对外服务时传 `<cwd>/data`；
+ *                        自动化测试不传，避免多个脚本共用一份数据互相污染）
+ */
+function createApp(options: { dataDir?: string } = {}): Server {
   const server = createServer(serveStatic)
+  persister = options.dataDir ? createPersister(options.dataDir) : null
+  if (persister) restoreRooms()
   /**
    * 兜底 error 监听。
    *
@@ -728,6 +815,7 @@ function createApp(): Server {
         clearRoomTimer(room)
         rooms.delete(code)
         console.log(`[room] ${code} 超时回收`)
+        persistSoon()
       }
     }
     // 内存保护：座位保留期拉到一天后，空闲房间可能堆积，超过上限按最久没活动的先清
@@ -741,6 +829,7 @@ function createApp(): Server {
           rooms.delete(room.roomId)
           console.log(`[room] ${room.roomId} 空闲房间超上限，回收`)
         })
+      persistSoon()
     }
     // 间隔可调：自动化测试要验证「保留期到点回收」，不能真等 5 分钟
   }, Number(process.env.SWEEP_MS ?? 5 * 60 * 1000))
@@ -759,8 +848,12 @@ function createApp(): Server {
  * 2. settle 之后要把监听器摘掉，否则后续运行期的 error（比如某个连接出错）
  *    会再次 reject 一个已经 resolve 的 promise，行为不可预期。
  */
-export function startServer(port = PORT, host = HOST): Promise<{ server: Server; port: number }> {
-  const server = createApp()
+export function startServer(
+  port = PORT,
+  host = HOST,
+  options: { dataDir?: string } = {},
+): Promise<{ server: Server; port: number }> {
+  const server = createApp(options)
   return new Promise((resolvePromise, reject) => {
     let settled = false
     const onError = (err: unknown): void => {
@@ -815,6 +908,22 @@ if (invokedDirectly) {
   })
 
   /**
+   * 优雅退出：把攒着还没写的房间状态立刻落盘。
+   *
+   * 这只是「休息一下」的场景（Ctrl+C、部署脚本发 SIGTERM）。
+   * SIGKILL / 断电兜不住——那只能靠 800ms 的定期写盘，最多丢最后一秒内的动作。
+   */
+  if (PERSIST_ENABLED) {
+    const shutdown = (signal: string): void => {
+      console.log(`\n[persist] 收到 ${signal}，保存房间后退出…`)
+      persister?.flush()
+      process.exit(0)
+    }
+    process.on('SIGINT', () => shutdown('SIGINT'))
+    process.on('SIGTERM', () => shutdown('SIGTERM'))
+  }
+
+  /**
    * 端口被占用时自动顺延到下一个可用端口。
    *
    * 为什么必须这么做：双击 start.cmd 的人不想读 netstat、也不想 taskkill。
@@ -825,7 +934,7 @@ if (invokedDirectly) {
     for (let i = 0; i < attempts; i += 1) {
       const p = startPort + i
       try {
-        const { port } = await startServer(p, HOST)
+        const { port } = await startServer(p, HOST, PERSIST_ENABLED ? { dataDir: DATA_DIR } : {})
         if (i > 0) {
           console.log('')
           console.log(`  端口 ${startPort} 被占用，已自动改用 ${port}。`)
@@ -850,6 +959,11 @@ if (invokedDirectly) {
       console.log(`  HTTP   http://localhost:${port}/`)
       console.log(`  WS     ws://localhost:${port}/ws`)
       console.log(`  静态   ${STATIC_DIR}`)
+      console.log(
+        PERSIST_ENABLED
+          ? `  落盘   ${join(DATA_DIR, 'rooms.json')}（重启后自动恢复进行中的对局）`
+          : '  落盘   已关闭（PERSIST=0）：重启会丢失所有房间',
+      )
       console.log('')
     })
     .catch((err: unknown) => {
