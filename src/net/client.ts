@@ -28,60 +28,13 @@ function resolveUrl(): string {
   return defaultUrl()
 }
 
-const TOKEN_KEY = 'londinium-protocol-net-token'
-const ROOM_KEY = 'londinium-protocol-net-room'
-const NAME_KEY = 'londinium-protocol-net-name'
-
-export interface StoredIdentity {
-  roomId: string
-  playerId: string
-  token: string
-  name: string
-}
-
-/** 读取上次的身份，用于刷新后自动重连 */
-export function loadIdentity(): StoredIdentity | null {
-  try {
-    const roomId = localStorage.getItem(ROOM_KEY)
-    const raw = localStorage.getItem(TOKEN_KEY)
-    if (!roomId || !raw) return null
-    const parsed = JSON.parse(raw) as { playerId?: unknown; token?: unknown }
-    if (typeof parsed.playerId !== 'string' || typeof parsed.token !== 'string') return null
-    const name = localStorage.getItem(NAME_KEY) ?? ''
-    return { roomId, playerId: parsed.playerId, token: parsed.token, name }
-  } catch {
-    return null
-  }
-}
-
-export function saveIdentity(roomId: string, playerId: string, token: string, name: string): void {
-  try {
-    localStorage.setItem(ROOM_KEY, roomId)
-    localStorage.setItem(TOKEN_KEY, JSON.stringify({ playerId, token }))
-    localStorage.setItem(NAME_KEY, name)
-  } catch {
-    // 隐私模式下 localStorage 可能不可用，重连能力降级但不影响本局
-  }
-}
-
-export function clearIdentity(): void {
-  try {
-    localStorage.removeItem(ROOM_KEY)
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(NAME_KEY)
-  } catch {
-    /* 同上 */
-  }
-}
-
-/** 最后一次加入房间时用的名字，用于重连 */
-export function loadName(): string {
-  try {
-    return localStorage.getItem(NAME_KEY) ?? ''
-  } catch {
-    return ''
-  }
-}
+/**
+ * 重连身份存放在 src/net/identity.ts：
+ * 每标签页一份 sessionStorage + 一份带心跳的「最近会话」快照，
+ * 解决「同一浏览器多开两个标签页互相顶号」的问题。这里只做转发。
+ */
+export type { StoredIdentity } from './identity'
+export { loadIdentity, saveIdentity, clearIdentity, loadName } from './identity'
 
 class Net {
   private ws: WebSocket | null = null

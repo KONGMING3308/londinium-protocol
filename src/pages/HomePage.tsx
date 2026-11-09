@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, Hand, Loader2, Target, Trophy, WifiOff, X } from 'lucide-react'
 import { Button } from '@/components/Button'
+import { hasForeignActiveSession } from '@/net/identity'
 import { ROOM_CODE_LENGTH } from '@/shared/protocol'
 import { useRoomStore } from '@/store/roomStore'
 
@@ -131,6 +132,15 @@ export function HomePage() {
     joinRoom(code, trimmedName)
   }
 
+  /**
+   * 这个页面出现在「另一个标签页正握着会话」的情况下时，给个说明。
+   * 不接管是对的（否则两个标签页会抢同一个座位），但要让人知道为什么没自动进去。
+   */
+  const [foreignTab, setForeignTab] = useState(false)
+  useEffect(() => {
+    setForeignTab(hasForeignActiveSession())
+  }, [])
+
   return (
     <section className="mx-auto max-w-2xl space-y-5">
       <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
@@ -155,6 +165,15 @@ export function HomePage() {
           >
             <X className="h-3.5 w-3.5" />
           </button>
+        </div>
+      )}
+
+      {/* 另一个标签页正在用这份会话：说明为什么本页没有自动进去 */}
+      {foreignTab && (
+        <div className="rounded-lg border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-[11px] leading-relaxed text-sky-200">
+          <span className="font-medium">检测到另一个标签页正在这局游戏里。</span>
+          本页没有自动接管（否则两个标签页会抢同一个座位、互相顶号掉线）。
+          想和那一局的人对战，直接输入房间码加入；想自己开一局，直接创建房间。
         </div>
       )}
 
@@ -305,13 +324,16 @@ export function HomePage() {
           </button>
         </div>
 
-        {/* 本机四开自测的已知限制：同一个浏览器里的标签页共用 localStorage */}
+        {/* 多标签页现在各用各的身份（sessionStorage + 心跳），不会再互相顶号 */}
         <p className="mt-2 rounded border border-amber-400/20 bg-amber-500/5 px-2 py-1.5 text-[11px] leading-relaxed text-amber-200/80">
-          <span className="font-medium text-amber-200">本机四开自测注意：</span>
-          同一浏览器的多个标签页共用同一份登录态，刷新某个标签页可能会恢复成别人的座位。
-          这只是本地自测的限制，真人各自用一台设备不会出现。
-          想在本机四开，请用「本地热座调试」（一个窗口切四个人），
-          或开四个不同的浏览器 / 无痕窗口。
+          <span className="font-medium text-amber-200">本机多开注意：</span>
+          同一个浏览器的多个标签页现在<span className="font-medium">各用各的身份</span>
+          ——每个标签页是一条独立会话，
+          刷新只恢复自己那一条，不会抢别人的座位。想在本机两个人对打：
+          标签页 A 建房，标签页 B 用房间码加入即可。
+          <span className="text-amber-200/70">
+            注意同一个标签页只能坐一个座位，别在两个标签页里同时操作同一个玩家。
+          </span>
         </p>
         {showLocal && (
           <div className="mt-3 space-y-2">
